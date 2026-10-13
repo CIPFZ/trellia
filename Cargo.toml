@@ -1,7 +1,6 @@
 [workspace]
 resolver = "3"
-# "examples/*" 在首个示例（M1 core_counter）出现时加入：空 glob 会被 cargo 视为字面路径而报错。
-members = ["crates/*"]
+members = ["crates/*", "examples/*"]
 
 [workspace.package]
 version = "0.1.0"
@@ -10,7 +9,7 @@ publish = false
 
 [workspace.dependencies]
 # 内部 crate
-trellia = { path = "crates/trellia" }
+trellia = { path = "crates/trellia", default-features = false }
 trellia-core = { path = "crates/trellia-core" }
 trellia-assets = { path = "crates/trellia-assets" }
 trellia-gfx = { path = "crates/trellia-gfx" }

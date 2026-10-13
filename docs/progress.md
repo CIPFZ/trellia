@@ -6,14 +6,16 @@
 
 ## 当前状态
 
-- 当前里程碑：M1 核心
-- 上次中断点：M0 完成
+- 当前里程碑：M2 资产、绘制、动画
+- 上次中断点：M1 完成
 
 ## 环境备注
 
 - Linux 构建 `rodio` 需要 ALSA 开发包：TencentOS / Fedora 系 `dnf install alsa-lib-devel`，Debian / Ubuntu 系 `apt-get install libasound2-dev`（CI 已配置）。
 - `check_deps.sh` 需要 `python3`（解析 `cargo metadata` 的 JSON）。
-- workspace `members` 在 M0 暂为 `["crates/*"]`：cargo 将无匹配的 `examples/*` glob 视为字面路径并报错；M1 新增首个示例时加入 `"examples/*"`。
+- workspace `members` 在 M0 暂为 `["crates/*"]`（cargo 将无匹配的 glob 视为字面路径并报错），M1 加入首个示例后已恢复为 `["crates/*", "examples/*"]`。
+- 示例均为 `examples/<name>/` 下的独立包：`src/lib.rs`（可测试逻辑）+ `[[example]] path = "src/main.rs"`（`autobins = false`），因此根目录 `cargo run --example <name>` 可用。
+- workspace 依赖 `trellia` 设置 `default-features = false`，示例按需开启 `egui` / `devtools`。
 - 原始图标位于 `asserts/icon/`（目录名疑似笔误），已复制到 SPEC.md 3.3 规定的 `assets/icon/`；`asserts/` 未纳入版本控制，待负责人确认后删除。
 
 ## 里程碑
@@ -37,4 +39,30 @@
   - [x] fmt / clippy `-D warnings` / test / doc 零警告
 - 行数：每个 crate 的 `lib.rs` 为 10 ～ 15 行文档，暂无代码
 - 测试数：0
-- 遗留问题：`examples/*` 尚未加入 workspace members（见环境备注）
+- 遗留问题：`examples/*` 尚未加入 workspace members（M1 已解决）
+
+### M1 核心
+
+- 状态：✅ 完成（2026-10-13）
+- 交付：
+  - [x] `trellia-core` 全部第 4 章功能：`App` / `Plugin` / `Stage` / `System`、`World` / `CommandBuffer` / `Transform2D`、`Resources`、`Events` / `EventBus`、`Time`、`Timer`、`TweenF32` / `TweenVec2`、`GameRng`、`Input` / `FrameInput` / `FrameOutput` / `InputEvent`
+  - [x] `trellia-headless`：`HeadlessRunner::new / app / app_mut / frame / frames / frame_with / register_snapshot / snapshot`、`Snapshot` trait（`Transform2D` 默认登记）
+  - [x] 门面：re-export `core` / `headless`、`prelude`、`run_headless`
+  - [x] `examples/core_counter`
+  - [x] ADR-003（core API 细节：`System` 函数指针、`Input` 原始像素字段、`AppExit`、glam / hecs 重新导出、累加器阈值、`step_ticks` 语义）
+- 验收（SPEC.md 4.11，均位于 `crates/trellia-core/src/`）：
+  - [x] `fixed_step_accumulates`（app.rs；另验证 1000 帧 1/30 s 恰好 2000 tick 无漂移）
+  - [x] `paused_skips_fixed_update`（app.rs）
+  - [x] `step_once_runs_exactly_one_tick`（app.rs）
+  - [x] `events_live_two_frames`（app.rs：逐帧可见数 `[0, 0, 1, 1, 0]`）
+  - [x] `commands_apply_at_tick_end`（app.rs）
+  - [x] `rng_deterministic`（rng.rs）
+  - [x] `transform_prev_synced_each_tick`（app.rs）
+  - [x] `input_just_pressed_single_frame`（app.rs）
+  - [x] `timer_repeating_resets`（time.rs）
+  - [x] `determinism_smoke`（app.rs：RNG + Timer + commands，两次 `step_ticks(600)` 快照逐字节相同，不同种子不同）
+  - [x] `core_counter` 示例 headless 运行 600 tick 打印确定结果，两次运行一致：
+    `core_counter: seed=42 ticks=600 pulses=10 rng_sum=497 snapshot_bytes=244`
+- 行数（`*.rs`，含测试与文档）：core 1645、headless 193、trellia 48、core_counter 100
+- 测试数：core 26 单元 + 1 文档测试；headless 2 单元 + 1 文档测试；trellia 1；core_counter 1（合计 32）
+- 遗留问题：无

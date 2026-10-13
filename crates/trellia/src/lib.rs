@@ -10,5 +10,39 @@
 
 #![forbid(unsafe_code)]
 
-/// 常用类型的统一导入入口。
-pub mod prelude {}
+pub use trellia_core as core;
+pub use trellia_headless as headless;
+
+use trellia_core::App;
+use trellia_headless::HeadlessRunner;
+
+/// 常用类型的统一导入入口。对应 UC-73、UC-74。
+pub mod prelude {
+    pub use trellia_core::{
+        App, AppExit, CommandBuffer, Component, Easing, Entity, Event, EventBus, Events,
+        FrameInput, FrameOutput, GameRng, Input, InputEvent, Key, MouseButton, Plugin, Resource,
+        Resources, Stage, System, Time, Timer, Transform2D, TweenF32, TweenVec2, Vec2, World,
+    };
+    pub use trellia_headless::{HeadlessRunner, Snapshot};
+}
+
+/// 以无窗口后端运行 App（始终可用）。对应 UC-73、UC-74。
+#[must_use]
+pub fn run_headless(app: App) -> HeadlessRunner {
+    HeadlessRunner::new(app)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::prelude::*;
+
+    #[test]
+    fn run_headless_drives_app() {
+        let mut runner = super::run_headless(App::new());
+        runner.frames(2);
+        assert_eq!(
+            runner.app().world().resources.expect::<Time>().fixed_tick,
+            2
+        );
+    }
+}
