@@ -1340,6 +1340,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "lane_demo"
+version = "0.1.0"
+dependencies = [
+ "trellia",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2890,6 +2897,7 @@ name = "trellia-headless"
 version = "0.1.0"
 dependencies = [
  "egui",
+ "lane_demo",
  "log",
  "trellia-assets",
  "trellia-audio",

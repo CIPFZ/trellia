@@ -18,6 +18,8 @@ trellia-scene = { path = "crates/trellia-scene" }
 trellia-devtools = { path = "crates/trellia-devtools" }
 trellia-egui = { path = "crates/trellia-egui" }
 trellia-headless = { path = "crates/trellia-headless" }
+# 示例（仅作 dev-dependency：trellia-headless 的 M5 集成测试驱动 lane_demo）
+lane_demo = { path = "examples/lane_demo" }
 
 # 第三方（SPEC.md 1.5 白名单；版本由 cargo add 获取）
 anyhow = "1.0.104"

@@ -14,5 +14,8 @@ trellia-core.workspace = true
 trellia-gfx.workspace = true
 trellia-scene.workspace = true
 
+[dev-dependencies]
+lane_demo.workspace = true
+
 [lints]
 workspace = true
