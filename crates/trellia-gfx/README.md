@@ -26,5 +26,6 @@ app.add_plugin(GfxPlugin::new(Vec2::new(1280.0, 720.0)))   // 先于其他 Rende
 - 排序键 `(layer, sort_y, seq)`；精灵 `sort_y = pos.y + sort_y_offset`，形状与文字为 0。
 - `Sprite` + `Transform2D` 由内置系统按 `Time.alpha` 插值绘制；锚点归一化。
 - `Animator` 以整数分数速度推进（`set_speed(1, 2)` 半速），进入带 `event` 的帧时发送 `AnimationEvent`。
-- `load_atlas` / `load_clip` 在加载时校验越界、帧名、`ticks ≥ 1`。
+- `load_atlas` / `load_clip` 在加载时校验越界、帧名、`ticks ≥ 1`；`load_atlas_into` / `load_clip_into`
+  直接读写 World 中的资源（ADR-008）。
 - 添加 `GfxPlugin` 后 `Input.mouse_pos` 为逻辑坐标（letterbox 已扣除）。

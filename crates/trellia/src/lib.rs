@@ -36,7 +36,9 @@ pub mod prelude {
     pub use trellia_assets::{
         AssetError, AssetServer, Assets, AssetsPlugin, AudioBytes, Handle, Image,
     };
-    pub use trellia_audio::{AudioBus, AudioClip, AudioPlugin, AudioQueue, AudioRequest};
+    pub use trellia_audio::{
+        AudioBus, AudioClip, AudioPlugin, AudioQueue, AudioRequest, load_audio_into,
+    };
     pub use trellia_core::{
         App, AppExit, CommandBuffer, Component, Easing, Entity, Event, EventBus, Events,
         FrameInput, FrameOutput, GameRng, Input, InputEvent, Key, MouseButton, Plugin, Resource,
@@ -46,7 +48,8 @@ pub mod prelude {
     pub use trellia_devtools::{DebugDraw, DevtoolsPlugin};
     pub use trellia_gfx::{
         AnimationClip, AnimationEvent, Animator, Atlas, Color, DrawCmd, DrawKind, DrawList,
-        GfxPlugin, Layer, Rect, Sprite, TextAlign, Viewport, load_atlas, load_clip,
+        GfxPlugin, Layer, Rect, Sprite, TextAlign, Viewport, load_atlas, load_atlas_into,
+        load_clip, load_clip_into,
     };
     pub use trellia_headless::{HeadlessRunner, Snapshot};
     pub use trellia_scene::{Scene, SceneCommands, ScenePlugin, SceneStack};

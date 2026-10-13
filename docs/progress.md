@@ -2,6 +2,7 @@
 
 ## 会话记录（新会话追加在最上方）
 
+- 2026-10-13 游戏补充 E-2（Rootguard SPEC 15）：新增 `load_atlas_into` / `load_clip_into` / `load_audio_into`（ADR-008），`lane_demo` 改用之，golden 不变。
 - 2026-10-13（续）：推送至 github.com/CIPFZ/trellia；首次 CI（run 38376052953）三平台全绿。
 - 2026-10-13（续）：负责人提供 Windows 桌面环境，完成第二平台实机验证；裁决翻转键（ADR-007）。
 - 2026-10-13：首次会话。计划：通读 SPEC.md / AGENT.md，完成 M0 工程骨架，随后按顺序推进 M1 起的里程碑。

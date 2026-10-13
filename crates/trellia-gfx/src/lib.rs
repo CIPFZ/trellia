@@ -11,12 +11,14 @@
 
 mod anim;
 mod draw;
+mod load;
 mod sprite;
 mod types;
 mod viewport;
 
 pub use anim::{AnimationClip, AnimationEvent, AnimationFrame, Animator, load_clip};
 pub use draw::{DrawCmd, DrawCmdBuilder, DrawKind, DrawList};
+pub use load::{load_atlas_into, load_clip_into};
 pub use sprite::{Atlas, AtlasFrame, Sprite, load_atlas};
 pub use types::{Color, Layer, Rect, TextAlign};
 pub use viewport::Viewport;

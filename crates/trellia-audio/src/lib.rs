@@ -9,7 +9,7 @@
 
 #![forbid(unsafe_code)]
 
-use trellia_assets::{Assets, AudioBytes, Handle};
+use trellia_assets::{AssetError, AssetServer, Assets, AudioBytes, Handle};
 use trellia_core::{App, Plugin, Stage, World};
 
 /// 音频片段：未解码的音频字节（re-export 自 `trellia-assets`）。对应 UC-50、UC-51。
@@ -147,6 +147,37 @@ fn clear_undrained(world: &mut World) {
     queue.requests.drain(..stale);
 }
 
+/// 按扩展名读取 OGG / WAV 到 World 中的 `Assets<AudioClip>`；同一路径重复加载返回已有句柄
+/// （引擎报告 3.8 / 4 建议，游戏 spec E-2，ADR-008）。`Assets<AudioClip>` 不存在时先插入。
+///
+/// # Errors
+///
+/// World 中没有 `AssetServer` 时返回 [`AssetError::RootNotFound`]；其余同 `AssetServer::load_audio`。
+pub fn load_audio_into(world: &mut World, rel: &str) -> Result<Handle<AudioClip>, AssetError> {
+    let server = world
+        .resources
+        .get::<AssetServer>()
+        .cloned()
+        .ok_or_else(|| {
+            AssetError::RootNotFound("AssetServer 资源不存在（未添加 AssetsPlugin）".into())
+        })?;
+    if let Some(handle) = world
+        .resources
+        .get::<Assets<AudioClip>>()
+        .and_then(|clips| clips.handle_by_path(rel))
+    {
+        return Ok(handle);
+    }
+    let bytes = server.load_audio(rel)?;
+    if !world.resources.contains::<Assets<AudioClip>>() {
+        world.resources.insert(Assets::<AudioClip>::default());
+    }
+    Ok(world
+        .resources
+        .expect_mut::<Assets<AudioClip>>()
+        .add_with_path(rel, bytes))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -261,5 +292,26 @@ mod tests {
             backend.handle(req, &clips);
         }
         assert_eq!(backend.0, vec!["Some(Ogg)"]);
+    }
+
+    #[test]
+    fn load_audio_into_world_dedupes_by_path() {
+        let mut app = App::new();
+        app.add_plugin(trellia_assets::AssetsPlugin {
+            root: Some(concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets").into()),
+        })
+        .add_plugin(AudioPlugin);
+        let world = app.world_mut();
+        let a = load_audio_into(world, "demo/blip.ogg").expect("加载音效");
+        let b = load_audio_into(world, "demo/blip.ogg").expect("重复加载");
+        assert_eq!(a, b);
+        assert_eq!(world.resources.expect::<Assets<AudioClip>>().len(), 1);
+        let err = load_audio_into(world, "demo/blip.mp3").expect_err("不支持的格式");
+        assert!(matches!(err, AssetError::UnsupportedAudio { .. }));
+        let mut bare = App::new();
+        assert!(matches!(
+            load_audio_into(bare.world_mut(), "demo/blip.ogg"),
+            Err(AssetError::RootNotFound(_))
+        ));
     }
 }

@@ -43,58 +43,14 @@ impl Plugin for LanePlugin {
 }
 
 fn load(world: &mut World) -> Result<LaneAssets, AssetError> {
-    let Some(server) = world.resources.get::<AssetServer>().cloned() else {
-        return Err(AssetError::RootNotFound("assets".into()));
-    };
-    let mut images = world
-        .resources
-        .remove::<Assets<Image>>()
-        .unwrap_or_default();
-    let mut atlases = world
-        .resources
-        .remove::<Assets<Atlas>>()
-        .unwrap_or_default();
-    let mut clips = world
-        .resources
-        .remove::<Assets<AnimationClip>>()
-        .unwrap_or_default();
-    let anims =
-        load_atlas(&server, &mut images, &mut atlases, "demo/walker.atlas.ron").and_then(|atlas| {
-            let walk = load_clip(
-                &server,
-                &atlases,
-                &mut clips,
-                atlas,
-                "demo/walker_walk.anim.ron",
-            )?;
-            let bite = load_clip(
-                &server,
-                &atlases,
-                &mut clips,
-                atlas,
-                "demo/walker_bite.anim.ron",
-            )?;
-            Ok((atlas, walk, bite))
-        });
-    world.resources.insert(images);
-    world.resources.insert(atlases);
-    world.resources.insert(clips);
-    let (atlas, walk, bite) = anims?;
-
-    let mut sound = |rel: &str| -> Result<Handle<AudioBytes>, AssetError> {
-        let bytes = server.load_audio(rel)?;
-        Ok(world
-            .resources
-            .expect_mut::<Assets<AudioBytes>>()
-            .add_with_path(rel, bytes))
-    };
+    let atlas = load_atlas_into(world, "demo/walker.atlas.ron")?;
     Ok(LaneAssets {
         atlas,
-        walk,
-        bite,
-        blip: sound("demo/blip.ogg")?,
-        hit: sound("demo/hit.ogg")?,
-        music: sound("demo/loop.ogg")?,
+        walk: load_clip_into(world, atlas, "demo/walker_walk.anim.ron")?,
+        bite: load_clip_into(world, atlas, "demo/walker_bite.anim.ron")?,
+        blip: load_audio_into(world, "demo/blip.ogg")?,
+        hit: load_audio_into(world, "demo/hit.ogg")?,
+        music: load_audio_into(world, "demo/loop.ogg")?,
     })
 }
 
