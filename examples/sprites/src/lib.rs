@@ -1,8 +1,9 @@
 //! # `sprites`
 //!
-//! M3 验收示例：N 个行者占位精灵以不同速度播放走路动画并向左移动（UC-22、UC-26），
+//! M3 / M4 验收示例：N 个行者占位精灵以不同速度播放走路动画并向左移动（UC-22、UC-26），
 //! 窗口任意缩放保持 letterbox（UC-20），按 [`FLIP_KEY`] 全体水平翻转（UC-24），
-//! 鼠标点击处画一个圆并持续 1 秒（UC-12、UC-40），标题栏显示帧耗时（UC-70）。
+//! 鼠标点击处画一个圆并持续 1 秒、同时播放 `blip.ogg`（UC-12、UC-40、UC-50），
+//! Esc 推入半透明暂停场景（UC-11、UC-61），F1 调试面板（UC-70、UC-71），标题栏显示帧耗时。
 
 #![forbid(unsafe_code)]
 
@@ -29,7 +30,14 @@ pub struct ClickMark(pub Timer);
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Flipped(pub bool);
 
-/// 示例插件。对应 UC-20、UC-22、UC-24、UC-40。
+/// 示例音效句柄。
+#[derive(Clone, Copy, Debug)]
+pub struct Sounds {
+    /// 点击音效。
+    pub blip: Handle<AudioBytes>,
+}
+
+/// 示例插件：加载资产、生成行者、绘制背景与标题。对应 UC-20、UC-22、UC-30、UC-70。
 pub struct SpritesPlugin {
     /// 精灵数量。
     pub count: usize,
@@ -41,20 +49,28 @@ impl Plugin for SpritesPlugin {
     }
 
     fn build(&self, app: &mut App) {
-        match load_walker(app.world_mut()) {
-            Ok((atlas, walk)) => spawn_walkers(app.world_mut(), atlas, walk, self.count),
+        match load(app.world_mut()) {
+            Ok(loaded) => {
+                spawn_walkers(app.world_mut(), loaded.atlas, loaded.walk, self.count);
+                app.insert_resource(Sounds { blip: loaded.blip });
+            }
             Err(e) => app.record_startup_error(e),
         }
         app.insert_resource(Flipped::default())
-            .add_system(Stage::Update, input_system)
-            .add_system(Stage::FixedUpdate, walk_system)
-            .add_system(Stage::FixedUpdate, click_mark_system)
-            .add_system(Stage::Render, render_system);
+            .add_system(Stage::Render, background_system)
+            .add_system(Stage::Render, title_system);
     }
 }
 
-/// 加载行者图集与走路片段。三个资产容器需同时可变借用，故临时取出再放回。
-fn load_walker(world: &mut World) -> Result<(Handle<Atlas>, Handle<AnimationClip>), AssetError> {
+/// 已加载的示例资产。
+struct Loaded {
+    atlas: Handle<Atlas>,
+    walk: Handle<AnimationClip>,
+    blip: Handle<AudioBytes>,
+}
+
+/// 加载行者图集、走路片段与点击音效。三个资产容器需同时可变借用，故临时取出再放回。
+fn load(world: &mut World) -> Result<Loaded, AssetError> {
     let Some(server) = world.resources.get::<AssetServer>().cloned() else {
         return Err(AssetError::RootNotFound("assets".into()));
     };
@@ -84,7 +100,13 @@ fn load_walker(world: &mut World) -> Result<(Handle<Atlas>, Handle<AnimationClip
     world.resources.insert(images);
     world.resources.insert(atlases);
     world.resources.insert(clips);
-    result
+    let (atlas, walk) = result?;
+    let blip = server.load_audio("demo/blip.ogg")?;
+    let blip = world
+        .resources
+        .expect_mut::<Assets<AudioBytes>>()
+        .add_with_path("demo/blip.ogg", blip);
+    Ok(Loaded { atlas, walk, blip })
 }
 
 fn spawn_walkers(
@@ -111,66 +133,134 @@ fn spawn_walkers(
     }
 }
 
-/// 每帧一次处理输入（同帧多个 tick 共享输入快照，放在 Update 避免重复响应）。
-fn input_system(world: &mut World) {
-    let input = world.resources.expect::<Input>();
-    let flip = input.key_just_pressed(FLIP_KEY);
-    let click = input
-        .mouse_just_pressed(MouseButton::Left)
-        .then_some(input.mouse_pos)
-        .flatten();
-    if flip {
-        let flipped = world.resources.expect_mut::<Flipped>();
-        flipped.0 = !flipped.0;
-        let value = flipped.0;
-        for sprite in world.entities.query_mut::<&mut Sprite>() {
-            sprite.flip_x = value;
+/// 主场景：行者移动、点击标记、输入。对应 UC-11、UC-24、UC-40、UC-50。
+pub struct SpritesScene;
+
+impl Scene for SpritesScene {
+    fn name(&self) -> &'static str {
+        "Sprites"
+    }
+
+    fn fixed_update(&mut self, world: &mut World) {
+        for (t, walk) in world.entities.query_mut::<(&mut Transform2D, &Walk)>() {
+            t.pos.x -= walk.0;
+            if t.pos.x < -40.0 {
+                t.teleport(Vec2::new(1320.0, t.pos.y));
+            }
+        }
+        for (e, mark) in world.entities.query_mut::<(Entity, &mut ClickMark)>() {
+            if mark.0.tick() {
+                world.commands.despawn(e);
+            }
         }
     }
-    if let Some(pos) = click {
-        world.commands.spawn((
-            Transform2D::new(pos),
-            ClickMark(Timer::once(CLICK_MARK_TICKS)),
-        ));
+
+    /// 每帧一次处理输入（同帧多个 tick 共享输入快照，放在 update 避免重复响应）。
+    fn update(&mut self, world: &mut World) {
+        let input = world.resources.expect::<Input>();
+        let pause = input.key_just_pressed(Key::Escape);
+        let flip = input.key_just_pressed(FLIP_KEY);
+        let click = input
+            .mouse_just_pressed(MouseButton::Left)
+            .then_some(input.mouse_pos)
+            .flatten();
+        if pause {
+            world
+                .resources
+                .expect_mut::<SceneCommands>()
+                .push(PauseScene);
+        }
+        if flip {
+            let flipped = world.resources.expect_mut::<Flipped>();
+            flipped.0 = !flipped.0;
+            let value = flipped.0;
+            for sprite in world.entities.query_mut::<&mut Sprite>() {
+                sprite.flip_x = value;
+            }
+        }
+        if let Some(pos) = click {
+            world.commands.spawn((
+                Transform2D::new(pos),
+                ClickMark(Timer::once(CLICK_MARK_TICKS)),
+            ));
+            if let Some(sounds) = world.resources.get::<Sounds>().copied() {
+                world
+                    .resources
+                    .expect_mut::<AudioQueue>()
+                    .play_sfx(sounds.blip);
+            }
+        }
+    }
+
+    fn draw(&mut self, world: &mut World) {
+        let Some(mut list) = world.resources.remove::<DrawList>() else {
+            return;
+        };
+        for (t, _) in world.entities.query::<(&Transform2D, &ClickMark)>().iter() {
+            list.circle(
+                Layer::OVERLAY,
+                t.pos,
+                24.0,
+                Color::from_hex(0xFD_CB6E).with_alpha(0.8),
+            );
+        }
+        world.resources.insert(list);
     }
 }
 
-fn walk_system(world: &mut World) {
-    for (t, walk) in world.entities.query_mut::<(&mut Transform2D, &Walk)>() {
-        t.pos.x -= walk.0;
-        if t.pos.x < -40.0 {
-            t.teleport(Vec2::new(1320.0, t.pos.y));
+/// 半透明暂停覆盖层：下方画面冻结但可见，Esc 返回。对应 UC-11、UC-61。
+pub struct PauseScene;
+
+impl Scene for PauseScene {
+    fn name(&self) -> &'static str {
+        "Paused"
+    }
+
+    fn on_enter(&mut self, world: &mut World) {
+        world.resources.expect_mut::<Time>().paused = true;
+    }
+
+    fn on_exit(&mut self, world: &mut World) {
+        world.resources.expect_mut::<Time>().paused = false;
+    }
+
+    fn update(&mut self, world: &mut World) {
+        if world
+            .resources
+            .expect::<Input>()
+            .key_just_pressed(Key::Escape)
+        {
+            world.resources.expect_mut::<SceneCommands>().pop();
         }
+    }
+
+    fn draw(&mut self, world: &mut World) {
+        let list = world.resources.expect_mut::<DrawList>();
+        list.rect(
+            Layer::OVERLAY,
+            Rect::from_min_size(Vec2::ZERO, Vec2::new(1280.0, 720.0)),
+            Color::BLACK.with_alpha(0.55),
+        );
+        list.text_aligned(
+            Layer::OVERLAY,
+            Vec2::new(640.0, 320.0),
+            "PAUSED  (Esc)",
+            64.0,
+            Color::WHITE,
+            TextAlign::Center,
+        );
     }
 }
 
-fn click_mark_system(world: &mut World) {
-    for (e, mark) in world.entities.query_mut::<(Entity, &mut ClickMark)>() {
-        if mark.0.tick() {
-            world.commands.despawn(e);
-        }
-    }
-}
-
-fn render_system(world: &mut World) {
-    let Some(mut list) = world.resources.remove::<DrawList>() else {
-        return;
-    };
-    list.rect(
+fn background_system(world: &mut World) {
+    world.resources.expect_mut::<DrawList>().rect(
         Layer::BACKGROUND,
         Rect::from_min_size(Vec2::ZERO, Vec2::new(1280.0, 720.0)),
         Color::from_hex(0x2D_3436),
     );
-    for (t, _) in world.entities.query::<(&Transform2D, &ClickMark)>().iter() {
-        list.circle(
-            Layer::OVERLAY,
-            t.pos,
-            24.0,
-            Color::from_hex(0xFD_CB6E).with_alpha(0.8),
-        );
-    }
-    world.resources.insert(list);
+}
 
+fn title_system(world: &mut World) {
     let frame = world.resources.expect::<Time>().frame;
     let count = world.entities.query::<&Walk>().iter().count();
     if frame.is_multiple_of(30)
@@ -186,7 +276,10 @@ pub fn build_app(count: usize) -> App {
     let mut app = App::new();
     app.add_plugin(AssetsPlugin::default())
         .add_plugin(GfxPlugin::new(Vec2::new(1280.0, 720.0)))
-        .add_plugin(SpritesPlugin { count });
+        .add_plugin(AudioPlugin)
+        .add_plugin(SpritesPlugin { count })
+        .add_plugin(ScenePlugin::new(SpritesScene))
+        .add_plugin(DevtoolsPlugin::default());
     app
 }
 
@@ -213,13 +306,27 @@ mod tests {
             .collect()
     }
 
-    fn input(events: Vec<InputEvent>, mouse: Option<(f32, f32)>) -> FrameInput {
-        FrameInput {
-            real_dt: Time::FIXED_DT,
-            window_size_px: (1280, 720),
-            mouse_pos_px: mouse,
-            events,
-        }
+    fn walker_x(runner: &HeadlessRunner) -> f32 {
+        runner
+            .app()
+            .world()
+            .query::<(&Transform2D, &Walk)>()
+            .iter()
+            .map(|(t, _)| t.pos.x)
+            .sum()
+    }
+
+    fn top(runner: &HeadlessRunner) -> Option<&'static str> {
+        runner
+            .app()
+            .world()
+            .resources
+            .expect::<SceneStack>()
+            .top_name()
+    }
+
+    fn time_mut(runner: &mut HeadlessRunner) -> &mut Time {
+        runner.app_mut().world_mut().resources.expect_mut::<Time>()
     }
 
     #[test]
@@ -232,30 +339,64 @@ mod tests {
     #[test]
     fn click_draws_circle_for_one_second() {
         let mut runner = trellia::run_headless(build_app(1));
-        runner.frame_with(input(
-            vec![InputEvent::MousePressed(MouseButton::Left)],
-            Some((300.0, 200.0)),
-        ));
-        runner.frame_with(input(
-            vec![InputEvent::MouseReleased(MouseButton::Left)],
-            None,
-        ));
+        runner.click(Vec2::new(300.0, 200.0));
         assert_eq!(circles(&runner), vec![Vec2::new(300.0, 200.0)]);
-        runner.frames(CLICK_MARK_TICKS - 2);
+        runner.frames(CLICK_MARK_TICKS - 1);
         assert_eq!(circles(&runner).len(), 1, "1 秒内仍可见");
-        runner.frames(2);
+        runner.frames(1);
         assert!(circles(&runner).is_empty(), "1 秒后消失");
     }
 
     #[test]
     fn flip_key_toggles_all_sprites() {
         let mut runner = trellia::run_headless(build_app(3));
-        runner.frame_with(input(vec![InputEvent::KeyPressed(FLIP_KEY)], None));
+        runner.press_key(FLIP_KEY);
         let flipped = runner
             .last_draw_list()
             .iter()
             .filter(|c| matches!(c.kind, DrawKind::Sprite { flip_x: true, .. }))
             .count();
         assert_eq!(flipped, 3);
+    }
+
+    #[test]
+    fn audio_request_recorded() {
+        let mut runner = trellia::run_headless(build_app(1));
+        runner.frames(2);
+        runner.click(Vec2::new(640.0, 360.0));
+        runner.frames(2);
+        let log = runner.take_audio_log();
+        let blip = runner.app().world().resources.expect::<Sounds>().blip;
+        assert_eq!(log.len(), 1);
+        assert!(matches!(log[0], AudioRequest::PlaySfx { clip, .. } if clip == blip));
+    }
+
+    #[test]
+    fn escape_pauses_and_resumes() {
+        let mut runner = trellia::run_headless(build_app(4));
+        runner.frames(3);
+        runner.press_key(Key::Escape);
+        runner.frame();
+        assert_eq!(top(&runner), Some("Paused"));
+        let frozen = walker_x(&runner);
+        runner.frames(30);
+        assert!((walker_x(&runner) - frozen).abs() < 1e-3, "暂停时画面冻结");
+        assert_eq!(sprite_count(&runner), 4, "下方场景仍可见");
+        runner.press_key(Key::Escape);
+        runner.frames(2);
+        assert_eq!(top(&runner), Some("Sprites"));
+        assert!(walker_x(&runner) < frozen, "恢复后继续移动");
+    }
+
+    #[test]
+    fn devtools_step_advances_one_tick_while_paused() {
+        let mut runner = trellia::run_headless(build_app(1));
+        runner.press_key(Key::F1);
+        time_mut(&mut runner).paused = true;
+        let tick = runner.app().world().resources.expect::<Time>().fixed_tick;
+        time_mut(&mut runner).step_once = true;
+        runner.frames(5);
+        let time = runner.app().world().resources.expect::<Time>();
+        assert_eq!(time.fixed_tick, tick + 1);
     }
 }

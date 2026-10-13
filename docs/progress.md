@@ -6,15 +6,15 @@
 
 ## 当前状态
 
-- 当前里程碑：M4 音频、场景、调试
-- 上次中断点：M3 自动化验收完成（人工验收待负责人确认，见下）
+- 当前里程碑：M5 垂直切片 lane_demo
+- 上次中断点：M4 完成（M3 / M4 实机人工复核待负责人确认，见下）
 
 ## 待负责人确认的问题
 
 1. **`Key` 枚举缺少字母键 F**（SPEC.md 4.9 “v1 仅此” vs 13 M3 “F 键翻转”）。两种解读导致公共 API 不同（是否新增 `Key::F`），
    按 AGENT.md 3.3 需人类裁决。当前 `sprites` 示例暂用 `Key::F2`（`examples/sprites/src/lib.rs` 中的 `FLIP_KEY` 常量）。
-2. **M3 人工验收**：本机无显示器，只能在 Xvfb + Mesa 软件渲染下自动化核对 Linux；Windows / macOS 只做了交叉 `cargo check`。
-   需负责人在实机（Linux + 另一平台）上手动运行 `sprites` 复核。
+2. **M3 / M4 人工验收**：本机无显示器、无声卡，只能在 Xvfb + Mesa 软件渲染下自动化核对 Linux；Windows / macOS 只做了交叉 `cargo check`。
+   需负责人在实机（Linux + 另一平台）上手动运行 `sprites` 复核画面、输入与**实际发声**（本机音频设备不可用，RodioBackend 已降级为静默）。
 
 
 - Linux 构建 `rodio` 需要 ALSA 开发包：TencentOS / Fedora 系 `dnf install alsa-lib-devel`，Debian / Ubuntu 系 `apt-get install libasound2-dev`（CI 已配置）。
@@ -117,6 +117,29 @@
   - [x] Windows（`x86_64-pc-windows-msvc`）与 macOS（`aarch64-apple-darwin`）：`cargo check --example sprites` 通过（仅编译）
   - [ ] 实机人工核对（Linux 桌面 + 另一平台）——待负责人
   - [x] 自动化测试：egui 7（输入映射 / 坐标 / 颜色 / 启动校验）、hello_window 1、sprites 3（精灵数、点击圆存活 1 秒、翻转）
-- 行数（`*.rs`）：trellia-egui 593、hello_window 77、sprites 279
+- 行数（`*.rs`）：trellia-egui 579、hello_window 84、sprites 286
 - 测试数：累计 75
 - 遗留问题：翻转键待确认（见上）；未加入 CJK 字体（ADR-005 §6，示例仅 ASCII）
+
+### M4 音频、场景、调试
+
+- 状态：✅ 自动化验收完成（2026-10-13）；实际发声与实机交互待负责人复核
+- 交付：
+  - [x] `trellia-audio`：`AudioClip`、`AudioBus`、`AudioRequest`、`AudioQueue`、`AudioBackend`、`AudioPlugin`
+  - [x] `RodioBackend`（`trellia-egui/src/audio.rs`）：每个音效一个 Player、同 clip ≤ 8 路、单一音乐 Player、总线音量、无设备降级静默
+  - [x] `trellia-scene`：`Scene`（`Send + Sync`）、`SceneCommand`、`SceneCommands`、`SceneStack`、`ScenePlugin::new`、`UiHooks` / `run_ui_hooks` / `add_ui_hook`
+  - [x] `trellia-devtools`：`DebugDraw`、`DevtoolsPlugin`（F1 面板）
+  - [x] 后端：egui 与 headless 每帧调用 UI 回调；headless 增加 `click` / `press_key` / `take_audio_log`
+  - [x] `assets/demo/blip.ogg`、`hit.ogg`、`loop.ogg`（10.000 s），由 `scripts/gen_demo_audio.py` 合成，登记于 `SOURCES.md`
+  - [x] ADR-006
+- 验收：
+  - [x] 8.1 `push_pauses_below`、`overlay_still_draws_below`、`blocks_draw_hides_below`、`commands_applied_at_frame_end`、`empty_stack_requests_exit`（`crates/trellia-scene/src/lib.rs`）
+  - [x] `audio_request_recorded`（`examples/sprites/src/lib.rs`）：模拟点击后 `take_audio_log` 恰含 1 条 `PlaySfx(blip)`
+  - [x] `sprites` 扩展（headless 测试 `escape_pauses_and_resumes`、`devtools_step_advances_one_tick_while_paused`）
+  - [x] Xvfb 核对：F1 面板显示 FPS / tick / 实体数 / 命令数 / 滑杆 / 暂停 / 单步 / DebugDraw / 场景栈；
+    Esc 推入半透明 “PAUSED” 覆盖层，下方画面冻结可见，面板显示 `scenes: Sprites > Paused`；暂停时点 3 次 Step，tick 203 → 206；
+    滑杆拖到 4.00 后 `ticks/frame 2`；本机无声卡时日志 `音频设备初始化失败，降级为静默后端`，程序继续运行
+  - [ ] 实机发声与交互复核——待负责人
+- 行数（`*.rs`）：audio 215、scene 562、devtools 298、egui 731、headless 453、sprites 427、trellia 77
+- 测试数：累计 91（`cargo test --workspace` 通过数合计）
+- 遗留问题：翻转键待确认

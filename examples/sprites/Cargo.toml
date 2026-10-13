@@ -11,7 +11,7 @@ name = "sprites"
 path = "src/main.rs"
 
 [dependencies]
-trellia = { workspace = true, features = ["egui"] }
+trellia = { workspace = true, features = ["egui", "devtools"] }
 
 [lints]
 workspace = true

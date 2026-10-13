@@ -29,16 +29,20 @@ pub mod prelude {
     pub use trellia_assets::{
         AssetError, AssetServer, Assets, AssetsPlugin, AudioBytes, Handle, Image,
     };
+    pub use trellia_audio::{AudioBus, AudioClip, AudioPlugin, AudioQueue, AudioRequest};
     pub use trellia_core::{
         App, AppExit, CommandBuffer, Component, Easing, Entity, Event, EventBus, Events,
         FrameInput, FrameOutput, GameRng, Input, InputEvent, Key, MouseButton, Plugin, Resource,
         Resources, Stage, System, Time, Timer, Transform2D, TweenF32, TweenVec2, Vec2, World,
     };
+    #[cfg(feature = "devtools")]
+    pub use trellia_devtools::{DebugDraw, DevtoolsPlugin};
     pub use trellia_gfx::{
         AnimationClip, AnimationEvent, Animator, Atlas, Color, DrawCmd, DrawKind, DrawList,
         GfxPlugin, Layer, Rect, Sprite, TextAlign, Viewport, load_atlas, load_clip,
     };
     pub use trellia_headless::{HeadlessRunner, Snapshot};
+    pub use trellia_scene::{Scene, SceneCommands, ScenePlugin, SceneStack};
 }
 
 /// 以 egui 窗口后端运行 App，直到窗口关闭或请求退出（feature `egui`）。对应 UC-20、UC-40。
