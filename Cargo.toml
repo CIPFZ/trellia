@@ -21,7 +21,7 @@ trellia-headless = { path = "crates/trellia-headless" }
 
 # 第三方（SPEC.md 1.5 白名单；版本由 cargo add 获取）
 anyhow = "1.0.104"
-eframe = "0.36.2"
+eframe = { version = "0.36.2", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
 egui = "0.36.2"
 env_logger = "0.11.11"
 glam = "0.34.1"
