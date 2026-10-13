@@ -53,6 +53,7 @@ pub struct App {
     world: World,
     systems: [Vec<System>; STAGE_COUNT],
     plugins: Vec<&'static str>,
+    startup_errors: Vec<String>,
     started: bool,
     accumulator: f32,
     output: FrameOutput,
@@ -77,6 +78,7 @@ impl App {
             world,
             systems: Default::default(),
             plugins: Vec::new(),
+            startup_errors: Vec::new(),
             started: false,
             accumulator: 0.0,
             output: FrameOutput::default(),
@@ -106,6 +108,20 @@ impl App {
     pub fn insert_resource<R: Resource>(&mut self, res: R) -> &mut Self {
         self.world.resources.insert(res);
         self
+    }
+
+    /// 记录启动期可恢复错误（例如 `Plugin::build` 中资产加载失败，UC-32，ADR-004）。
+    /// 错误文本应包含文件路径与原因。后端在第一帧前检查并终止启动。
+    pub fn record_startup_error(&mut self, err: impl std::fmt::Display) {
+        let text = err.to_string();
+        log::error!("启动失败: {text}");
+        self.startup_errors.push(text);
+    }
+
+    /// 已记录的启动期错误；非空时后端不得开始运行（ADR-004）。
+    #[must_use]
+    pub fn startup_errors(&self) -> &[String] {
+        &self.startup_errors
     }
 
     /// 借用 World。
@@ -457,6 +473,14 @@ mod tests {
     fn duplicate_plugin_panics_with_name() {
         let mut app = App::new();
         app.add_plugin(Named).add_plugin(Named);
+    }
+
+    #[test]
+    fn startup_errors_are_recorded() {
+        let mut app = App::new();
+        assert!(app.startup_errors().is_empty());
+        app.record_startup_error("读取失败 /x/y.png: not found");
+        assert_eq!(app.startup_errors(), ["读取失败 /x/y.png: not found"]);
     }
 
     // ---- determinism_smoke：RNG + Timer + commands 的小型系统集合 ----
