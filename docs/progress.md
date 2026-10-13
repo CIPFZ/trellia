@@ -6,15 +6,17 @@
 
 ## 当前状态
 
-- 当前里程碑：M5 垂直切片 lane_demo
-- 上次中断点：M4 完成（M3 / M4 实机人工复核待负责人确认，见下）
+- 当前里程碑：M0 ～ M5 自动化验收全部完成；待负责人实机复核与裁决（见下）
+- 上次中断点：M5 完成，`docs/engine-v1-report.md` 已提交
 
 ## 待负责人确认的问题
 
 1. **`Key` 枚举缺少字母键 F**（SPEC.md 4.9 “v1 仅此” vs 13 M3 “F 键翻转”）。两种解读导致公共 API 不同（是否新增 `Key::F`），
    按 AGENT.md 3.3 需人类裁决。当前 `sprites` 示例暂用 `Key::F2`（`examples/sprites/src/lib.rs` 中的 `FLIP_KEY` 常量）。
-2. **M3 / M4 人工验收**：本机无显示器、无声卡，只能在 Xvfb + Mesa 软件渲染下自动化核对 Linux；Windows / macOS 只做了交叉 `cargo check`。
-   需负责人在实机（Linux + 另一平台）上手动运行 `sprites` 复核画面、输入与**实际发声**（本机音频设备不可用，RodioBackend 已降级为静默）。
+2. **M3 / M4 / M5 人工验收**：本机无显示器、无声卡，只能在 Xvfb + Mesa 软件渲染下自动化核对 Linux；Windows / macOS 只做了交叉 `cargo check`。
+   需负责人在实机（Linux + 另一平台）上手动运行 `sprites` 与 `lane_demo` 复核画面、输入与**实际发声**（本机音频设备不可用，RodioBackend 已降级为静默）。
+3. **golden 文件**：`tests/golden/lane_demo_seed42.snap` 由 `lane_demo_determinism` 生成，已逐字段解码核对（见 M5 小节），建议负责人复核后视为基准。
+4. **`asserts/` 目录**：原始图标所在目录名疑似笔误，图标已复制到 `assets/icon/`，`asserts/` 未纳入版本控制，可删除。
 
 
 - Linux 构建 `rodio` 需要 ALSA 开发包：TencentOS / Fedora 系 `dnf install alsa-lib-devel`，Debian / Ubuntu 系 `apt-get install libasound2-dev`（CI 已配置）。
@@ -143,3 +145,39 @@
 - 行数（`*.rs`）：audio 215、scene 562、devtools 298、egui 731、headless 453、sprites 427、trellia 77
 - 测试数：累计 91（`cargo test --workspace` 通过数合计）
 - 遗留问题：翻转键待确认
+
+### M5 垂直切片 `lane_demo`
+
+- 状态：✅ 自动化验收完成（2026-10-13）；实机手玩复核待负责人
+- 交付：
+  - [x] `examples/lane_demo`：`rules.rs`（常量、组件、每 tick 模拟）、`scenes.rs`（Battle / Paused / GameOver / Victory）、
+    `render.rs`（占位渲染 `Placeholder` → `Rect + Text`、HUD、DebugDraw 格子与碰撞区间）
+  - [x] `tests/golden/lane_demo_seed42.snap`（211 字节）
+  - [x] `crates/trellia-headless/tests/lane_demo.rs`（`trellia-headless` 以 dev-dependency 引用 `lane_demo`）
+  - [x] 修复：`AudioPlugin` 曾在同一帧 `Stage::First` 清掉 `Startup` 中发出的请求（BGM 丢失），改为只丢弃跨过帧末仍未被取走的请求
+  - [x] 门面补齐 `audio` / `scene` / `devtools` / `egui` 重新导出；`docs/crates/trellia.md`；`docs/engine-v1-report.md`
+- 验收：
+  1. [x] 手动（Xvfb 等价核对）：放置两座炮塔、行者入场、弹丸射击；F1 面板 + DebugDraw 显示格子边界与行者碰撞区间；
+     胜利后显示半透明 “VICTORY” 覆盖层与 Restart 按钮，点击后重开为干净的新对局（实体数 1、`scenes: Battle`）。
+     暂停 / 重开 / 失败流程另由 `lane_demo_pause_and_restart` 覆盖。窗口缩放沿用 M3 已验证的 letterbox。实机复核待负责人。
+  2. [x] `lane_demo_determinism`：两次运行快照逐字节相同，且与 golden 相同。golden 人工核对（逐字段解码）：
+     炮塔 2 座（格 0 / 1，hp 3）、行者 0、在途弹丸 2、`LaneState { tick: 2876, money: 275, shots: 37, hits: 25,
+     schedule: [143, 743, 1323, 1949, 2530], spawned: 5, killed: 5, outcome: Won }`；时间线：每个行者 5 次命中毙命，
+     无行者到达炮塔，第 2876 tick 胜利
+  3. [x] `lane_demo_win_with_two_turrets`：第 2876 tick 进入 Victory（< 4000）
+  4. [x] `lane_demo_lose_without_turrets`：2500 tick 内进入 GameOver
+  5. [x] `lane_demo_bite_uses_event_frame`：到达当 tick 炮塔 hp 仍为 3，恰在到达后第 20 tick（`bite_hit` 帧）降为 2
+  6. [x] `lane_demo_audio`：`PlayMusic` 1 条，`PlaySfx(blip)` 37 条（≥ 10）
+  7. [x] 性能：release + Xvfb 软件渲染下标题栏 `lane_demo | 0.36 ms` ～ `0.60 ms`（< 2 ms）
+- 行数（`*.rs`）：lane_demo 991、headless 666（含集成测试）、audio 265、trellia 84
+- 测试数：累计 100（含 3 个文档测试），SPEC 第 4 ～ 8、13 章列出的 37 个测试全部实现
+- 遗留问题：见“待负责人确认的问题”与 `docs/engine-v1-report.md` 第 3 节
+
+## 完成标准（AGENT.md 9）核对
+
+- [x] M0 ～ M5 验收条件逐条打勾并附证据（实机手动核对项以 Xvfb 等价核对代替，待负责人复核）
+- [x] `cargo test --workspace` 全绿，100 个测试 ≥ SPEC 列出的 37 个
+- [x] `tests/golden/lane_demo_seed42.snap` 已提交
+- [x] `docs/engine-v1-report.md` 已提交
+- [x] 无 SPEC.md 1.4 非目标实现（无编辑器 / 脚本 / 反射 / 场景图层级 / 相机 / 粒子 / 物理 / 通用碰撞 / 网络 / 热重载 /
+  多线程调度 / 变更检测 / Action Map / 手柄 / 音频总线混音 / 录制回放 UI；lane_demo 的一维车道碰撞属于游戏层）
