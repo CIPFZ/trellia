@@ -2,6 +2,7 @@
 
 ## 会话记录（新会话追加在最上方）
 
+- 2026-10-13（续）：推送至 github.com/CIPFZ/trellia；首次 CI（run 38376052953）三平台全绿。
 - 2026-10-13（续）：负责人提供 Windows 桌面环境，完成第二平台实机验证；裁决翻转键（ADR-007）。
 - 2026-10-13：首次会话。计划：通读 SPEC.md / AGENT.md，完成 M0 工程骨架，随后按顺序推进 M1 起的里程碑。
 
@@ -14,9 +15,16 @@
 
 1. ~~`Key` 枚举缺少字母键 F~~ —— **已裁决（2026-10-13，ADR-007）**：不新增 `Key::F`，SPEC.md 13 M3 措辞修正为“F2 键翻转”，`FLIP_KEY = Key::F2` 保持不变。
 2. **M3 / M4 / M5 人工验收**：Windows 实机已完成（见下方“Windows 实机验证”）；Linux 仅在 Xvfb + Mesa 下核对，
-   如需 Linux 桌面实机复核，请负责人在带显示器的 Linux 上运行 `sprites` 与 `lane_demo`；macOS 仅 `cargo check`。
+   如需 Linux 桌面实机复核，请负责人在带显示器的 Linux 上运行 `sprites` 与 `lane_demo`；macOS 已在 CI（arm64）中通过全部测试，但未运行窗口示例。
 3. ~~golden 文件~~ —— **已确认（2026-10-13）**：负责人认可 `tests/golden/lane_demo_seed42.snap` 为基准；之后任何导致其变化的改动必须先提问。
 4. ~~`asserts/` 目录~~ —— **已删除（2026-10-13）**：经负责人同意；图标与 `assets/icon/trellia-icon.png` 逐字节相同。
+
+## CI（2026-10-13）
+
+首次运行 <https://github.com/CIPFZ/trellia/actions/runs/38376052953>（提交 `7491d36`）：ubuntu-latest、windows-latest、
+macos-latest（arm64）三个任务全部成功，耗时 4 分钟；每个任务均执行 fmt / clippy `-D warnings` / test / doc，非 Windows 任务另执行
+`check_deps.sh`。`lane_demo_determinism` 在 macOS arm64 上同样与 golden 逐字节一致。仅有的注解：`actions/checkout@v4`
+运行在 Node.js 20 上的弃用警告（不影响结果）与 runner 镜像迁移通知。
 
 ## Windows 实机验证（2026-10-13）
 
