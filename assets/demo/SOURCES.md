@@ -9,3 +9,6 @@
 | `walker.atlas.ron` | 行者图集元数据 | 原创 | CC0 1.0 |
 | `walker_walk.anim.ron` | 行走动画片段 | 原创 | CC0 1.0 |
 | `walker_bite.anim.ron` | 啃食动画片段（`bite_hit` 事件帧） | 原创 | CC0 1.0 |
+| `blip.ogg` | 0.09 s 上扫正弦音效（发射） | 原创，由 `scripts/gen_demo_audio.py` 合成、oggenc 编码 | CC0 1.0 |
+| `hit.ogg` | 0.15 s 噪声 + 低频冲击音效（命中） | 原创，由 `scripts/gen_demo_audio.py` 合成、oggenc 编码 | CC0 1.0 |
+| `loop.ogg` | 10 s 可循环方波 / 三角波小曲（BGM） | 原创，由 `scripts/gen_demo_audio.py` 合成、oggenc 编码 | CC0 1.0 |
