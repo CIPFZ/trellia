@@ -22,7 +22,11 @@
 
 use std::any::TypeId;
 
-use trellia_core::{App, Component, Entity, FrameInput, FrameOutput, Time, Transform2D, World};
+use trellia_audio::{AudioQueue, AudioRequest};
+use trellia_core::{
+    App, Component, Entity, FrameInput, FrameOutput, InputEvent, Key, MouseButton, Time,
+    Transform2D, Vec2, World,
+};
 use trellia_gfx::{DrawCmd, DrawList, Viewport};
 
 /// 参与确定性快照的组件（UC-13）。游戏层通常用 serde 或手写字节实现。
@@ -66,9 +70,12 @@ fn write_component<T: Component + Snapshot>(world: &World, out: &mut Vec<u8>) {
 /// 对应 UC-13、UC-73、UC-74。
 pub struct HeadlessRunner {
     app: App,
+    egui_ctx: egui::Context,
     window_size_px: (u32, u32),
+    mouse_pos_px: Option<(f32, f32)>,
     snapshot_writers: Vec<(TypeId, SnapshotWriter)>,
     last_draw_list: Vec<DrawCmd>,
+    audio_log: Vec<AudioRequest>,
     output: FrameOutput,
 }
 
@@ -98,9 +105,12 @@ impl HeadlessRunner {
             });
         let mut runner = Self {
             app,
+            egui_ctx: egui::Context::default(),
             window_size_px,
+            mouse_pos_px: None,
             snapshot_writers: Vec::new(),
             last_draw_list: Vec::new(),
+            audio_log: Vec::new(),
             output: FrameOutput::default(),
         };
         runner.register_snapshot::<Transform2D>();
@@ -119,14 +129,42 @@ impl HeadlessRunner {
     }
 
     /// 以固定 `real_dt = 1/60` 推进一帧（因此恰好一个 tick，除非暂停或改变了时间缩放）。
+    /// 鼠标位置沿用最近一次 [`click`](Self::click) 的位置。
     pub fn frame(&mut self) -> &FrameOutput {
+        self.frame_events(Vec::new())
+    }
+
+    fn frame_events(&mut self, events: Vec<InputEvent>) -> &FrameOutput {
         let input = FrameInput {
             real_dt: Time::FIXED_DT,
             window_size_px: self.window_size_px,
-            mouse_pos_px: None,
-            events: Vec::new(),
+            mouse_pos_px: self.mouse_pos_px,
+            events,
         };
         self.frame_with(input)
+    }
+
+    /// 在逻辑坐标 `logical_pos` 处单击左键：同一帧内按下并释放，鼠标停留在该位置（ADR-006）。
+    pub fn click(&mut self, logical_pos: Vec2) {
+        let px = self
+            .app
+            .world()
+            .resources
+            .get::<Viewport>()
+            .map_or(logical_pos, |v| v.logical_to_px(logical_pos));
+        self.mouse_pos_px = Some((px.x, px.y));
+        self.frame_events(vec![
+            InputEvent::MousePressed(MouseButton::Left),
+            InputEvent::MouseReleased(MouseButton::Left),
+        ]);
+    }
+
+    /// 按一次键：同一帧内按下并释放（ADR-006）。
+    pub fn press_key(&mut self, key: Key) {
+        self.frame_events(vec![
+            InputEvent::KeyPressed(key),
+            InputEvent::KeyReleased(key),
+        ]);
     }
 
     /// 连续推进 `n` 帧。
@@ -137,13 +175,42 @@ impl HeadlessRunner {
     }
 
     /// 以自定义输入推进一帧。
+    ///
+    /// 帧后依次：记录排序后的 `DrawList`；以 `egui::Context::run_ui` 驱动 UI 回调（不渲染）；
+    /// 把 `AudioQueue` 全部取入音频日志。
     pub fn frame_with(&mut self, input: FrameInput) -> &FrameOutput {
         self.output = self.app.frame(input).clone();
+        let world = self.app.world_mut();
         self.last_draw_list.clear();
-        if let Some(list) = self.app.world_mut().resources.get_mut::<DrawList>() {
+        if let Some(list) = world.resources.get_mut::<DrawList>() {
             self.last_draw_list.extend_from_slice(list.sorted());
         }
+
+        let (w, h) = self.window_size_px;
+        let frame = world.resources.expect::<Time>().frame;
+        let raw = egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(w as f32, h as f32),
+            )),
+            // 以帧号推导时间，避免 egui 读取系统时钟
+            time: Some(frame as f64 * f64::from(Time::FIXED_DT)),
+            ..egui::RawInput::default()
+        };
+        let mut out = self.egui_ctx.run_ui(raw, |ui| {
+            trellia_scene::run_ui_hooks(world, ui.ctx());
+        });
+        out.textures_delta.clear();
+
+        if let Some(queue) = world.resources.get_mut::<AudioQueue>() {
+            self.audio_log.extend(queue.drain());
+        }
         &self.output
+    }
+
+    /// 自上次调用以来全部音频请求（每帧从 `AudioQueue` 累积，UC-53）。
+    pub fn take_audio_log(&mut self) -> Vec<AudioRequest> {
+        std::mem::take(&mut self.audio_log)
     }
 
     /// 上一帧排序后的 `DrawList` 快照（UC-27、UC-73）。
