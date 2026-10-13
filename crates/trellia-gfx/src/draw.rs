@@ -218,6 +218,83 @@ impl DrawList {
         );
     }
 
+    /// 提交带 `sort_y` 的实心矩形，与同层精灵按 y 交错遮挡（ADR-009）。
+    pub fn rect_sorted(&mut self, layer: Layer, sort_y: f32, rect: Rect, color: Color) {
+        self.push(
+            layer,
+            sort_y,
+            DrawKind::Rect {
+                rect,
+                color,
+                stroke: None,
+            },
+        );
+    }
+
+    /// 提交带 `sort_y` 的矩形描边（ADR-009）。
+    pub fn rect_stroke_sorted(
+        &mut self,
+        layer: Layer,
+        sort_y: f32,
+        rect: Rect,
+        color: Color,
+        width: f32,
+    ) {
+        self.push(
+            layer,
+            sort_y,
+            DrawKind::Rect {
+                rect,
+                color,
+                stroke: Some(width),
+            },
+        );
+    }
+
+    /// 提交带 `sort_y` 的实心圆（ADR-009）。
+    pub fn circle_sorted(
+        &mut self,
+        layer: Layer,
+        sort_y: f32,
+        center: Vec2,
+        radius: f32,
+        color: Color,
+    ) {
+        self.push(
+            layer,
+            sort_y,
+            DrawKind::Circle {
+                center,
+                radius,
+                color,
+                stroke: None,
+            },
+        );
+    }
+
+    /// 提交带 `sort_y` 的居中文字（占位标签用，ADR-009）。
+    pub fn text_sorted(
+        &mut self,
+        layer: Layer,
+        sort_y: f32,
+        pos: Vec2,
+        text: impl Into<String>,
+        size: f32,
+        color: Color,
+    ) {
+        self.push(
+            layer,
+            sort_y,
+            DrawKind::Text {
+                pos,
+                text: text.into(),
+                size,
+                color,
+                align: TextAlign::Center,
+            },
+        );
+    }
+
     /// 按 `(layer, sort_y, seq)` 排序后返回，供后端消费。
     pub fn sorted(&mut self) -> &[DrawCmd] {
         self.cmds.sort_by(|a, b| {
@@ -285,5 +362,20 @@ mod tests {
         assert!(list.is_empty());
         list.circle(Layer::FX, Vec2::ZERO, 1.0, Color::WHITE);
         assert_eq!(list.sorted()[0].seq, 0);
+    }
+
+    #[test]
+    fn sorted_shapes_interleave_by_y() {
+        let r = Rect::from_min_size(Vec2::ZERO, Vec2::ONE);
+        let mut list = DrawList::default();
+        list.rect_sorted(Layer::WORLD, 300.0, r, Color::WHITE); // seq 0：下方一行
+        list.text_sorted(Layer::WORLD, 300.0, Vec2::ZERO, "a", 12.0, Color::WHITE); // seq 1
+        list.rect_sorted(Layer::WORLD, 100.0, r, Color::WHITE); // seq 2：上方一行
+        list.circle_sorted(Layer::WORLD, 100.0, Vec2::ZERO, 1.0, Color::WHITE); // seq 3
+        list.rect_stroke_sorted(Layer::WORLD, 200.0, r, Color::WHITE, 1.0); // seq 4
+        list.rect(Layer::WORLD, r, Color::WHITE); // seq 5：sort_y = 0
+        let order: Vec<u32> = list.sorted().iter().map(|c| c.seq).collect();
+        assert_eq!(order, vec![5, 2, 3, 4, 0, 1]);
+        assert!((list.sorted()[5].sort_y - 300.0).abs() < 1e-6);
     }
 }
