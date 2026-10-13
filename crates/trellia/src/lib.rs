@@ -10,7 +10,9 @@
 
 #![forbid(unsafe_code)]
 
+pub use trellia_assets as assets;
 pub use trellia_core as core;
+pub use trellia_gfx as gfx;
 pub use trellia_headless as headless;
 
 use trellia_core::App;
@@ -18,10 +20,17 @@ use trellia_headless::HeadlessRunner;
 
 /// 常用类型的统一导入入口。对应 UC-73、UC-74。
 pub mod prelude {
+    pub use trellia_assets::{
+        AssetError, AssetServer, Assets, AssetsPlugin, AudioBytes, Handle, Image,
+    };
     pub use trellia_core::{
         App, AppExit, CommandBuffer, Component, Easing, Entity, Event, EventBus, Events,
         FrameInput, FrameOutput, GameRng, Input, InputEvent, Key, MouseButton, Plugin, Resource,
         Resources, Stage, System, Time, Timer, Transform2D, TweenF32, TweenVec2, Vec2, World,
+    };
+    pub use trellia_gfx::{
+        AnimationClip, AnimationEvent, Animator, Atlas, Color, DrawCmd, DrawKind, DrawList,
+        GfxPlugin, Layer, Rect, Sprite, TextAlign, Viewport, load_atlas, load_clip,
     };
     pub use trellia_headless::{HeadlessRunner, Snapshot};
 }

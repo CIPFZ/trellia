@@ -6,8 +6,8 @@
 
 ## 当前状态
 
-- 当前里程碑：M2 资产、绘制、动画
-- 上次中断点：M1 完成
+- 当前里程碑：M3 egui 后端
+- 上次中断点：M2 完成
 
 ## 环境备注
 
@@ -65,4 +65,26 @@
     `core_counter: seed=42 ticks=600 pulses=10 rng_sum=497 snapshot_bytes=244`
 - 行数（`*.rs`，含测试与文档）：core 1645、headless 193、trellia 48、core_counter 100
 - 测试数：core 26 单元 + 1 文档测试；headless 2 单元 + 1 文档测试；trellia 1；core_counter 1（合计 32）
+- 遗留问题：无
+
+### M2 资产、绘制、动画（headless）
+
+- 状态：✅ 完成（2026-10-13）
+- 交付：
+  - [x] `trellia-assets`：`Handle` / `Asset` / `Assets`、`AssetServer`（RON / PNG / 音频字节）、`AssetError`、`AssetsPlugin`
+  - [x] `trellia-gfx`：`Viewport`、`Rect` / `Color` / `Layer` / `TextAlign`、`DrawList` / `DrawCmd` / `DrawKind` / `DrawCmdBuilder`、`Atlas` / `AtlasFrame` / `Sprite`、`AnimationClip` / `AnimationFrame` / `Animator` / `AnimationEvent`、`GfxPlugin`、`load_atlas` / `load_clip`
+  - [x] `trellia-core` 增加 `App::record_startup_error` / `startup_errors`（ADR-004）
+  - [x] `assets/demo/`：`placeholder_8x8.png`、`walker.png`（每帧 64 × 96，2 × 2 共 4 帧，ADR-004）、`walker.atlas.ron`、`walker_walk.anim.ron`、`walker_bite.anim.ron`、`SOURCES.md`；生成脚本 `scripts/gen_demo_assets.py`
+  - [x] `HeadlessRunner::last_draw_list`；虚拟窗口尺寸跟随 `Viewport.logical_size`；启动错误时构造即 panic
+  - [x] ADR-004
+- 验收：
+  - [x] 5.3 `handle_is_copy_and_typed`（handle.rs 单元测试 + `Handle` 文档中的 `compile_fail` 文档测试）
+  - [x] 5.3 `add_with_path_dedups`、`missing_file_error_contains_path`、`load_ron_roundtrip`、`load_png_dimensions`（8 × 8，`rgba.len() == 256`）
+  - [x] 6.7 `viewport_letterbox_wide`、`viewport_letterbox_tall`、`viewport_roundtrip`
+  - [x] 6.7 `drawlist_sort_order`
+  - [x] 6.7 `animator_advances_by_ticks`（逐 tick 帧序列 `[0, 0, 1, 1, 0, 0]`）、`animator_half_speed`（`[0, 0, 0, 0, 0, 1]`）、`animator_event_fires_once_per_entry`、`animator_non_loop_finishes`
+  - [x] 6.7 `sprite_render_uses_anchor_and_lerp`、`atlas_validation_rejects_out_of_bounds`
+  - [x] 集成测试 `crates/trellia-headless/tests/sprite_appears_in_drawlist.rs`：30 tick 后恰 1 条 `Sprite` 命令，`src_px` 为 `walk_1`（`walker_walk` 两帧各 20 tick）
+- 行数（`*.rs`，含测试与文档）：assets 569、gfx 1373、headless 302、core 1676
+- 测试数：core 27、assets 9 + 1 文档、gfx 18、headless 3 + 1 集成 + 1 文档、trellia 1、core_counter 1（合计 63）
 - 遗留问题：无

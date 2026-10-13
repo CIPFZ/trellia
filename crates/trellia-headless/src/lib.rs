@@ -23,6 +23,7 @@
 use std::any::TypeId;
 
 use trellia_core::{App, Component, Entity, FrameInput, FrameOutput, Time, Transform2D, World};
+use trellia_gfx::{DrawCmd, DrawList, Viewport};
 
 /// 参与确定性快照的组件（UC-13）。游戏层通常用 serde 或手写字节实现。
 ///
@@ -67,19 +68,40 @@ pub struct HeadlessRunner {
     app: App,
     window_size_px: (u32, u32),
     snapshot_writers: Vec<(TypeId, SnapshotWriter)>,
+    last_draw_list: Vec<DrawCmd>,
+    output: FrameOutput,
 }
 
 impl HeadlessRunner {
     /// 默认虚拟窗口尺寸（与 SPEC.md 设计分辨率一致，物理像素 = 逻辑坐标）。
     pub const DEFAULT_WINDOW_PX: (u32, u32) = (1280, 720);
 
-    /// 包装 App。`Transform2D` 默认已登记快照。
+    /// 包装 App。`Transform2D` 默认已登记快照。存在 `Viewport` 时虚拟窗口尺寸等于其逻辑尺寸
+    /// （物理像素 = 逻辑坐标，ADR-004）。
+    ///
+    /// # Panics
+    ///
+    /// App 记录了启动期错误（如资产加载失败）时 panic，信息包含全部错误文本（ADR-004）。
     #[must_use]
     pub fn new(app: App) -> Self {
+        assert!(
+            app.startup_errors().is_empty(),
+            "启动失败:\n{}",
+            app.startup_errors().join("\n")
+        );
+        let window_size_px = app
+            .world()
+            .resources
+            .get::<Viewport>()
+            .map_or(Self::DEFAULT_WINDOW_PX, |v| {
+                (v.logical_size.x as u32, v.logical_size.y as u32)
+            });
         let mut runner = Self {
             app,
-            window_size_px: Self::DEFAULT_WINDOW_PX,
+            window_size_px,
             snapshot_writers: Vec::new(),
+            last_draw_list: Vec::new(),
+            output: FrameOutput::default(),
         };
         runner.register_snapshot::<Transform2D>();
         runner
@@ -116,7 +138,18 @@ impl HeadlessRunner {
 
     /// 以自定义输入推进一帧。
     pub fn frame_with(&mut self, input: FrameInput) -> &FrameOutput {
-        self.app.frame(input)
+        self.output = self.app.frame(input).clone();
+        self.last_draw_list.clear();
+        if let Some(list) = self.app.world_mut().resources.get_mut::<DrawList>() {
+            self.last_draw_list.extend_from_slice(list.sorted());
+        }
+        &self.output
+    }
+
+    /// 上一帧排序后的 `DrawList` 快照（UC-27、UC-73）。
+    #[must_use]
+    pub fn last_draw_list(&self) -> &[DrawCmd] {
+        &self.last_draw_list
     }
 
     /// 登记参与快照的组件类型；快照按登记顺序逐类型写出。重复登记被忽略。
@@ -189,5 +222,13 @@ mod tests {
         assert_eq!(snap.len(), 4 + 24 + 4 + 2 * 10);
         b.frames(1);
         assert_ne!(snap, b.snapshot());
+    }
+
+    #[test]
+    #[should_panic(expected = "missing.png")]
+    fn startup_errors_abort_construction() {
+        let mut app = App::new();
+        app.record_startup_error("读取失败 /assets/missing.png: not found");
+        let _ = HeadlessRunner::new(app);
     }
 }
