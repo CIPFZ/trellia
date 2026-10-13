@@ -1,0 +1,9 @@
+AnimationClip(
+    name: "walker_bite",
+    looping: true,
+    frames: [
+        (frame: "bite_0", ticks: 20),
+        (frame: "bite_1", ticks: 10, event: "bite_hit"),
+        (frame: "bite_0", ticks: 20),
+    ],
+)

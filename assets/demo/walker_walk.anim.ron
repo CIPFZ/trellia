@@ -1,0 +1,8 @@
+AnimationClip(
+    name: "walker_walk",
+    looping: true,
+    frames: [
+        (frame: "walk_0", ticks: 20),
+        (frame: "walk_1", ticks: 20),
+    ],
+)

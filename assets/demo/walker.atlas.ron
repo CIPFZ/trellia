@@ -1,0 +1,10 @@
+// 行者占位图集：每帧 64 x 96，2 x 2 排布（ADR-004）
+Atlas(
+    image: "demo/walker.png",
+    frames: [
+        (name: "walk_0", x: 0,  y: 0,  w: 64, h: 96, anchor: (0.5, 1.0)),
+        (name: "walk_1", x: 64, y: 0,  w: 64, h: 96, anchor: (0.5, 1.0)),
+        (name: "bite_0", x: 0,  y: 96, w: 64, h: 96, anchor: (0.5, 1.0)),
+        (name: "bite_1", x: 64, y: 96, w: 64, h: 96, anchor: (0.5, 1.0)),
+    ],
+)
