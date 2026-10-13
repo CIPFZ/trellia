@@ -40,8 +40,8 @@ ADR-004 资产 / 绘制 / 动画细节；ADR-005 egui 后端细节；ADR-006 音
 2. **字体**：只有 egui 默认字体（无 CJK）；示例与调试面板文字均为 ASCII（ADR-005 §6）。
 3. **平台覆盖**：Windows 实机（画面、输入、letterbox、发声、性能）与 Linux Xvfb 已核对；macOS 在 CI 中通过全部测试，
    但窗口示例未在 macOS 与 Linux 桌面实机上运行。音频“听感”未经人耳确认，只以系统会话峰值表证明信号送达输出端点。
-4. **跨平台确定性**：golden 依赖 IEEE-754 f32 加减法的确定性，模拟中未使用超越函数；已在 x86_64 Linux 与
-   x86_64 Windows（MSVC）上逐字节一致，ARM（如 Apple Silicon）尚未比对。
+4. **跨平台确定性**：golden 依赖 IEEE-754 f32 加减法的确定性，模拟中未使用超越函数；已在 x86_64 Linux、
+   x86_64 Windows（MSVC）与 arm64 macOS（CI）上逐字节一致。
 5. **headless UI**：headless 每帧驱动 egui UI 回调但不注入指针事件，无法“点击” egui 按钮；
    结算场景同时提供回车键重开以便测试。
 6. **启动错误**以字符串记录（`App::record_startup_error`），丢失错误源链。
