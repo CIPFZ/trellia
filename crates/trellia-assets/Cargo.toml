@@ -1,0 +1,17 @@
+[package]
+name = "trellia-assets"
+description = "Trellia 资产：Handle / Assets / AssetServer 同步加载与解码"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+image.workspace = true
+log.workspace = true
+ron.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+trellia-core.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,46 @@
+[workspace]
+resolver = "3"
+# "examples/*" 在首个示例（M1 core_counter）出现时加入：空 glob 会被 cargo 视为字面路径而报错。
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace.dependencies]
+# 内部 crate
+trellia = { path = "crates/trellia" }
+trellia-core = { path = "crates/trellia-core" }
+trellia-assets = { path = "crates/trellia-assets" }
+trellia-gfx = { path = "crates/trellia-gfx" }
+trellia-audio = { path = "crates/trellia-audio" }
+trellia-scene = { path = "crates/trellia-scene" }
+trellia-devtools = { path = "crates/trellia-devtools" }
+trellia-egui = { path = "crates/trellia-egui" }
+trellia-headless = { path = "crates/trellia-headless" }
+
+# 第三方（SPEC.md 1.5 白名单；版本由 cargo add 获取）
+anyhow = "1.0.104"
+eframe = "0.36.2"
+egui = "0.36.2"
+env_logger = "0.11.11"
+glam = "0.34.1"
+hecs = "0.11.2"
+image = { version = "0.25.10", default-features = false, features = ["png"] }
+log = "0.4.34"
+rand = { version = "0.10.3", default-features = false, features = ["std"] }
+rand_pcg = "0.10.2"
+rodio = { version = "0.23.0", default-features = false, features = ["playback", "vorbis", "wav"] }
+ron = "0.12.2"
+serde = { version = "1.0.229", features = ["derive"] }
+thiserror = "2.0.21"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+# SPEC.md 15：额外启用 pedantic 中的两项
+must_use_candidate = "warn"
+missing_errors_doc = "warn"

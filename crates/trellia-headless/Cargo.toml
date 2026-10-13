@@ -1,0 +1,18 @@
+[package]
+name = "trellia-headless"
+description = "Trellia 无窗口后端：驱动 App、记录 DrawList 与音频请求、确定性快照"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+egui.workspace = true
+log.workspace = true
+trellia-assets.workspace = true
+trellia-audio.workspace = true
+trellia-core.workspace = true
+trellia-gfx.workspace = true
+trellia-scene.workspace = true
+
+[lints]
+workspace = true

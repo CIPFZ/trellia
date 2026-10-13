@@ -1,0 +1,16 @@
+[package]
+name = "trellia-core"
+description = "Trellia 核心：App / Plugin / Stage / World / Time / Events / Resources / Timer / Tween / GameRng / Input"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+glam.workspace = true
+hecs.workspace = true
+log.workspace = true
+rand.workspace = true
+rand_pcg.workspace = true
+
+[lints]
+workspace = true

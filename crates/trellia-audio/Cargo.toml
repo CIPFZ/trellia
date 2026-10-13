@@ -1,0 +1,14 @@
+[package]
+name = "trellia-audio"
+description = "Trellia 音频：AudioQueue 请求队列与 AudioBackend trait（不接触设备）"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+log.workspace = true
+trellia-assets.workspace = true
+trellia-core.workspace = true
+
+[lints]
+workspace = true

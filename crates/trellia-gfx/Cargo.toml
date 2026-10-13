@@ -1,0 +1,16 @@
+[package]
+name = "trellia-gfx"
+description = "Trellia 绘制：Viewport / DrawList / Sprite / Atlas / Animation（不接触 GPU）"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+glam.workspace = true
+log.workspace = true
+serde.workspace = true
+trellia-assets.workspace = true
+trellia-core.workspace = true
+
+[lints]
+workspace = true

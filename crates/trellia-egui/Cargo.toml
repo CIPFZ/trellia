@@ -1,0 +1,22 @@
+[package]
+name = "trellia-egui"
+description = "Trellia egui 后端：eframe 窗口 + egui Painter 绘制 + rodio 音频"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+eframe.workspace = true
+egui.workspace = true
+env_logger.workspace = true
+log.workspace = true
+rodio.workspace = true
+trellia-assets.workspace = true
+trellia-audio.workspace = true
+trellia-core.workspace = true
+trellia-gfx.workspace = true
+trellia-scene.workspace = true
+
+[lints]
+workspace = true
