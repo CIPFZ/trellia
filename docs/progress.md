@@ -2,18 +2,19 @@
 
 ## 会话记录（新会话追加在最上方）
 
+- 2026-10-13（续）：负责人提供 Windows 桌面环境，完成第二平台实机验证；裁决翻转键（ADR-007）。
 - 2026-10-13：首次会话。计划：通读 SPEC.md / AGENT.md，完成 M0 工程骨架，随后按顺序推进 M1 起的里程碑。
 
 ## 当前状态
 
-- 当前里程碑：M0 ～ M5 自动化验收全部完成；待负责人实机复核与裁决（见下）
+- 当前里程碑：M0 ～ M5 全部完成（含 Windows 实机验证）
 - 上次中断点：M5 完成，`docs/engine-v1-report.md` 已提交
 
 ## 待负责人确认的问题
 
 1. ~~`Key` 枚举缺少字母键 F~~ —— **已裁决（2026-10-13，ADR-007）**：不新增 `Key::F`，SPEC.md 13 M3 措辞修正为“F2 键翻转”，`FLIP_KEY = Key::F2` 保持不变。
-2. **M3 / M4 / M5 人工验收**：本机无显示器、无声卡，只能在 Xvfb + Mesa 软件渲染下自动化核对 Linux；Windows / macOS 只做了交叉 `cargo check`。
-   需负责人在实机（Linux + 另一平台）上手动运行 `sprites` 与 `lane_demo` 复核画面、输入与**实际发声**（本机音频设备不可用，RodioBackend 已降级为静默）。
+2. **M3 / M4 / M5 人工验收**：Windows 实机已完成（见下方“Windows 实机验证”）；Linux 仅在 Xvfb + Mesa 下核对，
+   如需 Linux 桌面实机复核，请负责人在带显示器的 Linux 上运行 `sprites` 与 `lane_demo`；macOS 仅 `cargo check`。
 3. **golden 文件**：`tests/golden/lane_demo_seed42.snap` 由 `lane_demo_determinism` 生成，已逐字段解码核对（见 M5 小节），建议负责人复核后视为基准。
 4. **`asserts/` 目录**：原始图标所在目录名疑似笔误，图标已复制到 `assets/icon/`，`asserts/` 未纳入版本控制，可删除。
 
@@ -27,6 +28,25 @@
 - 示例均为 `examples/<name>/` 下的独立包：`src/lib.rs`（可测试逻辑）+ `[[example]] path = "src/main.rs"`（`autobins = false`），因此根目录 `cargo run --example <name>` 可用。
 - workspace 依赖 `trellia` 设置 `default-features = false`，示例按需开启 `egui` / `devtools`。
 - 原始图标位于 `asserts/icon/`（目录名疑似笔误），已复制到 SPEC.md 3.3 规定的 `assets/icon/`；`asserts/` 未纳入版本控制，待负责人确认后删除。
+
+## Windows 实机验证（2026-10-13）
+
+环境：Windows Server 2022（10.0.20348），x64，Rust 1.99.0 `x86_64-pc-windows-msvc` + MSVC BuildTools，
+有声卡（High Definition Audio / USB Audio Device，Audiosrv 运行中）。源码为提交 `584ab5c` 的 `git archive`，
+工作目录 `D:\trellia-verify`（独立 `CARGO_HOME` / `CARGO_TARGET_DIR`，未改动机器上共享的 Rust 工具链）。
+输入以 pyautogui 注入，画面以桌面截图核对。
+
+- [x] `cargo test --workspace`：100 通过 / 0 失败；**`lane_demo_determinism` 与 Linux 生成的 golden 逐字节一致**（跨平台确定性成立）
+- [x] `cargo build --release` 三个窗口示例成功（1 分 08 秒）
+- [x] M3 `sprites`：窗口最大化（客户区 1920 × 1017）后逻辑区域 x = 56 ～ 1863，缩放 1.4125，左右各 56 px 黑边；
+  点击逻辑 (640, 360) / (200, 600) 的圆心实测 (959.3, 530.0) / (337.3, 869.0)，期望 (960, 531.5) / (338.5, 870.5)，误差 < 2 px；
+  F2 全体翻转；标题栏帧耗时 0.14 ～ 0.29 ms（1000 精灵预算 4 ms）
+- [x] M4：Esc 推入半透明暂停覆盖层、下方冻结可见；F1 面板（60 FPS / vsync）；暂停时点 3 次 Step，tick 12440 → 12443；
+  滑杆拖到 4.00 后 `ticks/frame 4`；点击播放 blip：日志显示每次点击 symphonia 解码 vorbis 流，无设备错误
+- [x] **实际发声**：以 Windows Core Audio 会话峰值表采样 `lane_demo` 进程的音频会话 3 秒，`max_peak = 0.92`（BGM 信号确实送达系统输出端点）
+- [x] M5 `lane_demo`：无炮塔时进入 GAME OVER 覆盖层；点击 egui “Restart” 按钮重开（该点击未被游戏误当作放置）；
+  放置格 0 / 1 两座炮塔后 5/5 击败进入 VICTORY（资源 275、2 枚在途弹丸，与 golden 记录的终局状态一致）；
+  回车重开、Esc 暂停（2 秒内仅标题耗时文字变化）、空格继续；标题栏帧耗时 0.15 ～ 0.18 ms（预算 2 ms）
 
 ## 里程碑
 
@@ -101,7 +121,7 @@
 
 ### M3 egui 后端
 
-- 状态：🟡 自动化部分完成（2026-10-13）；人工验收待负责人在实机确认（见“待负责人确认的问题”）
+- 状态：✅ 完成（2026-10-13）：Linux（Xvfb）+ Windows 实机核对通过
 - 交付：
   - [x] `trellia-egui`：`run`、`RunConfig`、`WindowStatus`；`src/input_map.rs`（仅 v1 `Key`）、`src/paint.rs`（DrawList → egui，纹理惰性上传 `NEAREST`，同纹理精灵合批）
   - [x] 门面：`run_egui`、`RunConfig` 重新导出、`egui_backend` 模块（feature `egui`）
@@ -116,7 +136,7 @@
     - 动画：各行者以 1/2、1/1、3/2、2/1 倍速播放走路帧并以不同速度左移、循环
     - 性能：`--count 1000`，标题栏 `sprites | 1000 sprites | 0.70 ms`（eframe 整帧 CPU 耗时，软件渲染）< 4 ms
   - [x] Windows（`x86_64-pc-windows-msvc`）与 macOS（`aarch64-apple-darwin`）：`cargo check --example sprites` 通过（仅编译）
-  - [ ] 实机人工核对（Linux 桌面 + 另一平台）——待负责人
+  - [x] Windows 实机核对（见“Windows 实机验证”）
   - [x] 自动化测试：egui 7（输入映射 / 坐标 / 颜色 / 启动校验）、hello_window 1、sprites 3（精灵数、点击圆存活 1 秒、翻转）
 - 行数（`*.rs`）：trellia-egui 579、hello_window 84、sprites 286
 - 测试数：累计 75
@@ -124,7 +144,7 @@
 
 ### M4 音频、场景、调试
 
-- 状态：✅ 自动化验收完成（2026-10-13）；实际发声与实机交互待负责人复核
+- 状态：✅ 完成（2026-10-13）：Windows 实机交互与实际发声已核对
 - 交付：
   - [x] `trellia-audio`：`AudioClip`、`AudioBus`、`AudioRequest`、`AudioQueue`、`AudioBackend`、`AudioPlugin`
   - [x] `RodioBackend`（`trellia-egui/src/audio.rs`）：每个音效一个 Player、同 clip ≤ 8 路、单一音乐 Player、总线音量、无设备降级静默
@@ -140,14 +160,14 @@
   - [x] Xvfb 核对：F1 面板显示 FPS / tick / 实体数 / 命令数 / 滑杆 / 暂停 / 单步 / DebugDraw / 场景栈；
     Esc 推入半透明 “PAUSED” 覆盖层，下方画面冻结可见，面板显示 `scenes: Sprites > Paused`；暂停时点 3 次 Step，tick 203 → 206；
     滑杆拖到 4.00 后 `ticks/frame 2`；本机无声卡时日志 `音频设备初始化失败，降级为静默后端`，程序继续运行
-  - [ ] 实机发声与交互复核——待负责人
+  - [x] Windows 实机发声与交互（会话峰值 0.92）
 - 行数（`*.rs`）：audio 215、scene 562、devtools 298、egui 731、headless 453、sprites 427、trellia 77
 - 测试数：累计 91（`cargo test --workspace` 通过数合计）
 - 遗留问题：~~翻转键待确认~~（ADR-007 已裁决）
 
 ### M5 垂直切片 `lane_demo`
 
-- 状态：✅ 自动化验收完成（2026-10-13）；实机手玩复核待负责人
+- 状态：✅ 完成（2026-10-13）：Windows 实机完整对局（胜 / 负 / 暂停 / 重开）已核对
 - 交付：
   - [x] `examples/lane_demo`：`rules.rs`（常量、组件、每 tick 模拟）、`scenes.rs`（Battle / Paused / GameOver / Victory）、
     `render.rs`（占位渲染 `Placeholder` → `Rect + Text`、HUD、DebugDraw 格子与碰撞区间）
@@ -174,7 +194,7 @@
 
 ## 完成标准（AGENT.md 9）核对
 
-- [x] M0 ～ M5 验收条件逐条打勾并附证据（实机手动核对项以 Xvfb 等价核对代替，待负责人复核）
+- [x] M0 ～ M5 验收条件逐条打勾并附证据（手动核对项：Windows 实机 + Linux Xvfb）
 - [x] `cargo test --workspace` 全绿，100 个测试 ≥ SPEC 列出的 37 个
 - [x] `tests/golden/lane_demo_seed42.snap` 已提交
 - [x] `docs/engine-v1-report.md` 已提交

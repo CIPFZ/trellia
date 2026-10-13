@@ -2,8 +2,8 @@
 
 - 日期：2026-10-13
 - 范围：SPEC.md 第 13 章 M0 ～ M5
-- 结论：全部自动化验收通过；M3 / M4 / M5 中需在实机（显示器 + 声卡）上手动核对的条目已在
-  Xvfb + Mesa 软件渲染下完成等价核对，**实机复核待负责人确认**（见 `docs/progress.md`）。
+- 结论：全部验收通过。手动核对项在 Windows Server 2022 实机（MSVC，带声卡）上完成，
+  Linux 在 Xvfb + Mesa 软件渲染下核对；golden 快照在 Linux 与 Windows 上逐字节一致（见 `docs/progress.md`）。
 
 ## 1. 各 crate 规模
 
@@ -37,10 +37,10 @@ ADR-004 资产 / 绘制 / 动画细节；ADR-005 egui 后端细节；ADR-006 音
 
 1. **字母键**：`Key` 枚举按 SPEC.md 4.9 不含字母键；M3 翻转键为 F2（ADR-007，SPEC 措辞已修正）。
 2. **字体**：只有 egui 默认字体（无 CJK）；示例与调试面板文字均为 ASCII（ADR-005 §6）。
-3. **实机验证**：开发环境无显示器与声卡。画面 / 输入 / letterbox / 性能在 Xvfb + llvmpipe 下核对；
-   `RodioBackend` 的实际发声未验证（设备缺失时已验证降级为静默）。Windows / macOS 仅 `cargo check`。
-4. **跨平台确定性**：golden 依赖 IEEE-754 f32 加减法的确定性，模拟中未使用超越函数；尚未在 x86_64 Linux 以外
-   的平台上比对 golden（CI 三平台矩阵会覆盖）。
+3. **平台覆盖**：Windows 实机（画面、输入、letterbox、发声、性能）与 Linux Xvfb 已核对；Linux 桌面实机与
+   macOS 未运行（macOS 仅 `cargo check`）。音频“听感”未经人耳确认，只以系统会话峰值表证明信号送达输出端点。
+4. **跨平台确定性**：golden 依赖 IEEE-754 f32 加减法的确定性，模拟中未使用超越函数；已在 x86_64 Linux 与
+   x86_64 Windows（MSVC）上逐字节一致，ARM（如 Apple Silicon）尚未比对。
 5. **headless UI**：headless 每帧驱动 egui UI 回调但不注入指针事件，无法“点击” egui 按钮；
    结算场景同时提供回车键重开以便测试。
 6. **启动错误**以字符串记录（`App::record_startup_error`），丢失错误源链。
