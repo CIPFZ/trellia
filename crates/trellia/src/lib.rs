@@ -11,7 +11,11 @@
 #![forbid(unsafe_code)]
 
 pub use trellia_assets as assets;
+pub use trellia_audio as audio;
 pub use trellia_core as core;
+/// 调试面板（feature `devtools`）。
+#[cfg(feature = "devtools")]
+pub use trellia_devtools as devtools;
 /// egui 窗口后端（feature `egui`）。
 #[cfg(feature = "egui")]
 pub use trellia_egui as egui_backend;
@@ -20,6 +24,9 @@ pub use trellia_egui as egui_backend;
 pub use trellia_egui::RunConfig;
 pub use trellia_gfx as gfx;
 pub use trellia_headless as headless;
+pub use trellia_scene as scene;
+/// egui 核心 crate（场景 `ui` 使用）。
+pub use trellia_scene::egui;
 
 use trellia_core::App;
 use trellia_headless::HeadlessRunner;

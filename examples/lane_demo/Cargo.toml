@@ -1,0 +1,17 @@
+[package]
+name = "lane_demo"
+description = "M5 垂直切片：单车道极简塔防，全部实体占位渲染"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+autobins = false
+
+[[example]]
+name = "lane_demo"
+path = "src/main.rs"
+
+[dependencies]
+trellia = { workspace = true, features = ["egui", "devtools"] }
+
+[lints]
+workspace = true
