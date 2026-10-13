@@ -1,0 +1,17 @@
+[package]
+name = "hello_window"
+description = "M3 示例：窗口中显示 \"Trellia\" 文字与一个矩形"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+autobins = false
+
+[[example]]
+name = "hello_window"
+path = "src/main.rs"
+
+[dependencies]
+trellia = { workspace = true, features = ["egui"] }
+
+[lints]
+workspace = true

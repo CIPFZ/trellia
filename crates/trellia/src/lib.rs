@@ -12,6 +12,12 @@
 
 pub use trellia_assets as assets;
 pub use trellia_core as core;
+/// egui 窗口后端（feature `egui`）。
+#[cfg(feature = "egui")]
+pub use trellia_egui as egui_backend;
+/// 窗口运行配置（feature `egui`，ADR-005）。
+#[cfg(feature = "egui")]
+pub use trellia_egui::RunConfig;
 pub use trellia_gfx as gfx;
 pub use trellia_headless as headless;
 
@@ -33,6 +39,16 @@ pub mod prelude {
         GfxPlugin, Layer, Rect, Sprite, TextAlign, Viewport, load_atlas, load_clip,
     };
     pub use trellia_headless::{HeadlessRunner, Snapshot};
+}
+
+/// 以 egui 窗口后端运行 App，直到窗口关闭或请求退出（feature `egui`）。对应 UC-20、UC-40。
+///
+/// # Errors
+///
+/// 启动期错误、未添加 `GfxPlugin`、`logical_size` 不一致或窗口初始化失败时返回错误（ADR-005）。
+#[cfg(feature = "egui")]
+pub fn run_egui(app: App, cfg: RunConfig) -> Result<(), anyhow::Error> {
+    trellia_egui::run(app, cfg)
 }
 
 /// 以无窗口后端运行 App（始终可用）。对应 UC-73、UC-74。

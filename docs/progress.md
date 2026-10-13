@@ -6,13 +6,22 @@
 
 ## 当前状态
 
-- 当前里程碑：M3 egui 后端
-- 上次中断点：M2 完成
+- 当前里程碑：M4 音频、场景、调试
+- 上次中断点：M3 自动化验收完成（人工验收待负责人确认，见下）
 
-## 环境备注
+## 待负责人确认的问题
+
+1. **`Key` 枚举缺少字母键 F**（SPEC.md 4.9 “v1 仅此” vs 13 M3 “F 键翻转”）。两种解读导致公共 API 不同（是否新增 `Key::F`），
+   按 AGENT.md 3.3 需人类裁决。当前 `sprites` 示例暂用 `Key::F2`（`examples/sprites/src/lib.rs` 中的 `FLIP_KEY` 常量）。
+2. **M3 人工验收**：本机无显示器，只能在 Xvfb + Mesa 软件渲染下自动化核对 Linux；Windows / macOS 只做了交叉 `cargo check`。
+   需负责人在实机（Linux + 另一平台）上手动运行 `sprites` 复核。
+
 
 - Linux 构建 `rodio` 需要 ALSA 开发包：TencentOS / Fedora 系 `dnf install alsa-lib-devel`，Debian / Ubuntu 系 `apt-get install libasound2-dev`（CI 已配置）。
 - `check_deps.sh` 需要 `python3`（解析 `cargo metadata` 的 JSON）。
+- 本机 `/data` 分区接近写满（其他 workspace 占用），构建目录改用 `CARGO_TARGET_DIR=/root/trellia-target`。
+- 无 GPU / 显示器时可用 `Xvfb :99` + `LIBGL_ALWAYS_SOFTWARE=1` 运行示例，`xdotool` 注入输入、`import` 截图。
+- 直接运行编译产物（非 `cargo run`）时需设置 `TRELLIA_ASSETS=<仓库>/assets`。
 - workspace `members` 在 M0 暂为 `["crates/*"]`（cargo 将无匹配的 glob 视为字面路径并报错），M1 加入首个示例后已恢复为 `["crates/*", "examples/*"]`。
 - 示例均为 `examples/<name>/` 下的独立包：`src/lib.rs`（可测试逻辑）+ `[[example]] path = "src/main.rs"`（`autobins = false`），因此根目录 `cargo run --example <name>` 可用。
 - workspace 依赖 `trellia` 设置 `default-features = false`，示例按需开启 `egui` / `devtools`。
@@ -85,6 +94,29 @@
   - [x] 6.7 `animator_advances_by_ticks`（逐 tick 帧序列 `[0, 0, 1, 1, 0, 0]`）、`animator_half_speed`（`[0, 0, 0, 0, 0, 1]`）、`animator_event_fires_once_per_entry`、`animator_non_loop_finishes`
   - [x] 6.7 `sprite_render_uses_anchor_and_lerp`、`atlas_validation_rejects_out_of_bounds`
   - [x] 集成测试 `crates/trellia-headless/tests/sprite_appears_in_drawlist.rs`：30 tick 后恰 1 条 `Sprite` 命令，`src_px` 为 `walk_1`（`walker_walk` 两帧各 20 tick）
-- 行数（`*.rs`，含测试与文档）：assets 569、gfx 1373、headless 302、core 1676
+- 行数（`*.rs`，含测试与文档）：assets 576、gfx 1397、headless 300、core 1669
 - 测试数：core 27、assets 9 + 1 文档、gfx 18、headless 3 + 1 集成 + 1 文档、trellia 1、core_counter 1（合计 63）
 - 遗留问题：无
+
+### M3 egui 后端
+
+- 状态：🟡 自动化部分完成（2026-10-13）；人工验收待负责人在实机确认（见“待负责人确认的问题”）
+- 交付：
+  - [x] `trellia-egui`：`run`、`RunConfig`、`WindowStatus`；`src/input_map.rs`（仅 v1 `Key`）、`src/paint.rs`（DrawList → egui，纹理惰性上传 `NEAREST`，同纹理精灵合批）
+  - [x] 门面：`run_egui`、`RunConfig` 重新导出、`egui_backend` 模块（feature `egui`）
+  - [x] `examples/hello_window`、`examples/sprites`（`--count N`，标题栏显示帧耗时）
+  - [x] ADR-005（RunConfig 语义、物理像素约定、指针归属、glow 渲染器、`WindowStatus`、字体、合批）
+- 验收证据：
+  - [x] Linux（Xvfb 1920 × 1080 + Mesa llvmpipe，release）：
+    - `hello_window` 截图：深色背景上显示 "Trellia" 与蓝色矩形
+    - `sprites` 缩放：`xdotool windowsize 1600 600` 后左右各约 267 px 黑边，画面等比缩放（scale 0.833）
+    - 点击准确：在黑边偏移下点击窗口 (800, 300)，圆心出现在逻辑 (640, 360) 即画面中心
+    - 翻转：按翻转键后全部行者朝向从左变为右（截图对比）
+    - 动画：各行者以 1/2、1/1、3/2、2/1 倍速播放走路帧并以不同速度左移、循环
+    - 性能：`--count 1000`，标题栏 `sprites | 1000 sprites | 0.70 ms`（eframe 整帧 CPU 耗时，软件渲染）< 4 ms
+  - [x] Windows（`x86_64-pc-windows-msvc`）与 macOS（`aarch64-apple-darwin`）：`cargo check --example sprites` 通过（仅编译）
+  - [ ] 实机人工核对（Linux 桌面 + 另一平台）——待负责人
+  - [x] 自动化测试：egui 7（输入映射 / 坐标 / 颜色 / 启动校验）、hello_window 1、sprites 3（精灵数、点击圆存活 1 秒、翻转）
+- 行数（`*.rs`）：trellia-egui 593、hello_window 77、sprites 279
+- 测试数：累计 75
+- 遗留问题：翻转键待确认（见上）；未加入 CJK 字体（ADR-005 §6，示例仅 ASCII）

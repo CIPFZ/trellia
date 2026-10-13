@@ -6,6 +6,7 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+anyhow = { workspace = true, optional = true }
 trellia-assets.workspace = true
 trellia-audio.workspace = true
 trellia-core.workspace = true
@@ -18,7 +19,7 @@ trellia-scene.workspace = true
 [features]
 default = ["egui", "devtools"]
 ## egui 窗口后端（run_egui）
-egui = ["dep:trellia-egui"]
+egui = ["dep:trellia-egui", "dep:anyhow"]
 ## 调试面板（DevtoolsPlugin）
 devtools = ["dep:trellia-devtools"]
 

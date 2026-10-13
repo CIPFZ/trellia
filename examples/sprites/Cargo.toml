@@ -1,0 +1,17 @@
+[package]
+name = "sprites"
+description = "M3 示例：多个行者占位精灵以不同速度播放走路动画，letterbox 缩放、翻转、点击画圆"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+autobins = false
+
+[[example]]
+name = "sprites"
+path = "src/main.rs"
+
+[dependencies]
+trellia = { workspace = true, features = ["egui"] }
+
+[lints]
+workspace = true
