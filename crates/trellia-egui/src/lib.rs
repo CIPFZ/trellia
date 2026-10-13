@@ -1,7 +1,8 @@
 //! # trellia-egui
 //!
 //! 职责：基于 eframe 的窗口后端：采集输入并翻译为 `FrameInput`、驱动 `App::frame`、
-//! 用 egui Painter 绘制 `DrawList`（letterbox）、调用场景 UI、用 rodio 执行音频请求。
+//! 用 egui Painter 绘制 `DrawList`（letterbox）、调用 UI 回调（场景 UI、调试面板）、
+//! 用 rodio 执行音频请求（`RodioBackend`）。
 //!
 //! 对应用例：UC-20、UC-24、UC-25、UC-40、UC-41、UC-42、UC-50、UC-51、UC-52、UC-70。
 //!
@@ -9,8 +10,11 @@
 
 #![forbid(unsafe_code)]
 
+mod audio;
 mod input_map;
 mod paint;
+
+pub use audio::RodioBackend;
 
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
@@ -18,8 +22,8 @@ use std::time::Instant;
 
 use anyhow::{anyhow, bail};
 use trellia_assets::{Assets, Handle, Image};
-use trellia_core::App;
-use trellia_core::Vec2;
+use trellia_audio::{AudioBackend, AudioClip, AudioQueue};
+use trellia_core::{App, Vec2};
 use trellia_gfx::{DrawList, Viewport};
 
 /// 窗口运行配置（SPEC.md 11.1，字段语义见 ADR-005）。对应 UC-20。
@@ -109,6 +113,7 @@ pub fn run(mut app: App, cfg: RunConfig) -> anyhow::Result<()> {
 
 struct EguiApp {
     app: App,
+    audio: RodioBackend,
     textures: HashMap<Handle<Image>, egui::TextureHandle>,
     last_frame: Option<Instant>,
     shown_title: String,
@@ -119,10 +124,28 @@ impl EguiApp {
     fn new(app: App, title: String) -> Self {
         Self {
             app,
+            audio: RodioBackend::new(),
             textures: HashMap::new(),
             last_frame: None,
             shown_title: title,
             frame_ms: VecDeque::with_capacity(60),
+        }
+    }
+
+    /// 取走本帧音频请求交给 rodio。
+    fn play_audio(&mut self) {
+        let world = self.app.world_mut();
+        let Some(queue) = world.resources.get_mut::<AudioQueue>() else {
+            return;
+        };
+        let requests: Vec<_> = queue.drain().collect();
+        if requests.is_empty() {
+            return;
+        }
+        let empty = Assets::<AudioClip>::default();
+        let clips = world.resources.get::<Assets<AudioClip>>().unwrap_or(&empty);
+        for req in requests {
+            self.audio.handle(req, clips);
         }
     }
 
@@ -165,6 +188,8 @@ impl eframe::App for EguiApp {
         let input = input_map::collect_frame_input(&ctx, real_dt);
         let exit = self.app.frame(input).exit_requested;
         self.paint(ui);
+        trellia_scene::run_ui_hooks(self.app.world_mut(), &ctx);
+        self.play_audio();
 
         // 优先使用 eframe 统计的上一帧完整 CPU 耗时（含 tessellation 与绘制提交，不含 vsync 等待）
         let ms = frame
