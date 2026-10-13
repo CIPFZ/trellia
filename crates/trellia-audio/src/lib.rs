@@ -56,6 +56,8 @@ pub enum AudioRequest {
 #[derive(Clone, Debug, Default)]
 pub struct AudioQueue {
     requests: Vec<AudioRequest>,
+    /// 上一帧 Render 结束时的请求数：后端本应在帧后取走它们。
+    pending_at_frame_end: usize,
     warned_undrained: bool,
 }
 
@@ -119,23 +121,30 @@ impl Plugin for AudioPlugin {
         if !app.world().resources.contains::<Assets<AudioClip>>() {
             app.insert_resource(Assets::<AudioClip>::default());
         }
-        app.add_system(Stage::First, clear_undrained);
+        app.add_system(Stage::First, clear_undrained)
+            .add_system(Stage::Render, mark_frame_end);
     }
 }
 
+fn mark_frame_end(world: &mut World) {
+    let queue = world.resources.expect_mut::<AudioQueue>();
+    queue.pending_at_frame_end = queue.requests.len();
+}
+
+/// 只丢弃上一帧结束时已存在、却没被后端取走的请求；`Startup` 等在本帧 `First` 之前发出、
+/// 后端尚未有机会处理的请求保留。
 fn clear_undrained(world: &mut World) {
     let queue = world.resources.expect_mut::<AudioQueue>();
-    if queue.requests.is_empty() {
+    let stale = queue.pending_at_frame_end.min(queue.requests.len());
+    queue.pending_at_frame_end = 0;
+    if stale == 0 {
         return;
     }
     if !queue.warned_undrained {
         queue.warned_undrained = true;
-        log::warn!(
-            "AudioQueue 有 {} 条请求未被后端取走，已丢弃（此后不再提示）",
-            queue.requests.len()
-        );
+        log::warn!("AudioQueue 有 {stale} 条请求未被后端取走，已丢弃（此后不再提示）");
     }
-    queue.requests.clear();
+    queue.requests.drain(..stale);
 }
 
 #[cfg(test)]
@@ -181,6 +190,8 @@ mod tests {
             .resources
             .expect_mut::<AudioQueue>()
             .play_sfx(h);
+        // 第一帧：后端尚未有机会处理，保留；第二帧开始时仍未被取走，丢弃
+        app.frame(FrameInput::default());
         app.frame(FrameInput::default());
         assert!(
             app.world()
@@ -188,6 +199,45 @@ mod tests {
                 .expect::<AudioQueue>()
                 .peek()
                 .is_empty()
+        );
+    }
+
+    fn request_on_startup(world: &mut World) {
+        let clip = world
+            .resources
+            .expect::<Assets<AudioClip>>()
+            .iter()
+            .next()
+            .map(|(h, _)| h);
+        if let Some(clip) = clip {
+            world
+                .resources
+                .expect_mut::<AudioQueue>()
+                .play_music(clip, true);
+        }
+    }
+
+    #[test]
+    fn startup_requests_survive_first_frame() {
+        let (clips, _) = clip();
+        let mut app = App::new();
+        app.insert_resource(clips)
+            .add_plugin(AudioPlugin)
+            .add_system(Stage::Startup, request_on_startup);
+        app.frame(FrameInput::default());
+        assert_eq!(
+            app.world().resources.expect::<AudioQueue>().peek().len(),
+            1,
+            "后端尚未处理过的请求不应被清空"
+        );
+        app.frame(FrameInput::default());
+        assert!(
+            app.world()
+                .resources
+                .expect::<AudioQueue>()
+                .peek()
+                .is_empty(),
+            "跨帧仍未被取走的请求被丢弃"
         );
     }
 
