@@ -11,8 +11,7 @@
 
 ## 待负责人确认的问题
 
-1. **`Key` 枚举缺少字母键 F**（SPEC.md 4.9 “v1 仅此” vs 13 M3 “F 键翻转”）。两种解读导致公共 API 不同（是否新增 `Key::F`），
-   按 AGENT.md 3.3 需人类裁决。当前 `sprites` 示例暂用 `Key::F2`（`examples/sprites/src/lib.rs` 中的 `FLIP_KEY` 常量）。
+1. ~~`Key` 枚举缺少字母键 F~~ —— **已裁决（2026-10-13，ADR-007）**：不新增 `Key::F`，SPEC.md 13 M3 措辞修正为“F2 键翻转”，`FLIP_KEY = Key::F2` 保持不变。
 2. **M3 / M4 / M5 人工验收**：本机无显示器、无声卡，只能在 Xvfb + Mesa 软件渲染下自动化核对 Linux；Windows / macOS 只做了交叉 `cargo check`。
    需负责人在实机（Linux + 另一平台）上手动运行 `sprites` 与 `lane_demo` 复核画面、输入与**实际发声**（本机音频设备不可用，RodioBackend 已降级为静默）。
 3. **golden 文件**：`tests/golden/lane_demo_seed42.snap` 由 `lane_demo_determinism` 生成，已逐字段解码核对（见 M5 小节），建议负责人复核后视为基准。
@@ -121,7 +120,7 @@
   - [x] 自动化测试：egui 7（输入映射 / 坐标 / 颜色 / 启动校验）、hello_window 1、sprites 3（精灵数、点击圆存活 1 秒、翻转）
 - 行数（`*.rs`）：trellia-egui 579、hello_window 84、sprites 286
 - 测试数：累计 75
-- 遗留问题：翻转键待确认（见上）；未加入 CJK 字体（ADR-005 §6，示例仅 ASCII）
+- 遗留问题：~~翻转键待确认~~（ADR-007 已裁决）；未加入 CJK 字体（ADR-005 §6，示例仅 ASCII）
 
 ### M4 音频、场景、调试
 
@@ -144,7 +143,7 @@
   - [ ] 实机发声与交互复核——待负责人
 - 行数（`*.rs`）：audio 215、scene 562、devtools 298、egui 731、headless 453、sprites 427、trellia 77
 - 测试数：累计 91（`cargo test --workspace` 通过数合计）
-- 遗留问题：翻转键待确认
+- 遗留问题：~~翻转键待确认~~（ADR-007 已裁决）
 
 ### M5 垂直切片 `lane_demo`
 

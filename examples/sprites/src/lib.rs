@@ -10,7 +10,7 @@
 use trellia::egui_backend::WindowStatus;
 use trellia::prelude::*;
 
-/// 翻转键。SPEC.md 13 M3 写作“F 键”，但 v1 `Key` 枚举没有字母键（4.9），暂用 F2（见 docs/progress.md 待确认问题）。
+/// 翻转键（SPEC.md 13 M3，ADR-007：v1 `Key` 枚举不含字母键）。
 pub const FLIP_KEY: Key = Key::F2;
 
 /// 点击标记存活的 tick 数（1 秒）。
