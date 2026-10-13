@@ -15,19 +15,8 @@
 1. ~~`Key` 枚举缺少字母键 F~~ —— **已裁决（2026-10-13，ADR-007）**：不新增 `Key::F`，SPEC.md 13 M3 措辞修正为“F2 键翻转”，`FLIP_KEY = Key::F2` 保持不变。
 2. **M3 / M4 / M5 人工验收**：Windows 实机已完成（见下方“Windows 实机验证”）；Linux 仅在 Xvfb + Mesa 下核对，
    如需 Linux 桌面实机复核，请负责人在带显示器的 Linux 上运行 `sprites` 与 `lane_demo`；macOS 仅 `cargo check`。
-3. **golden 文件**：`tests/golden/lane_demo_seed42.snap` 由 `lane_demo_determinism` 生成，已逐字段解码核对（见 M5 小节），建议负责人复核后视为基准。
-4. **`asserts/` 目录**：原始图标所在目录名疑似笔误，图标已复制到 `assets/icon/`，`asserts/` 未纳入版本控制，可删除。
-
-
-- Linux 构建 `rodio` 需要 ALSA 开发包：TencentOS / Fedora 系 `dnf install alsa-lib-devel`，Debian / Ubuntu 系 `apt-get install libasound2-dev`（CI 已配置）。
-- `check_deps.sh` 需要 `python3`（解析 `cargo metadata` 的 JSON）。
-- 本机 `/data` 分区接近写满（其他 workspace 占用），构建目录改用 `CARGO_TARGET_DIR=/root/trellia-target`。
-- 无 GPU / 显示器时可用 `Xvfb :99` + `LIBGL_ALWAYS_SOFTWARE=1` 运行示例，`xdotool` 注入输入、`import` 截图。
-- 直接运行编译产物（非 `cargo run`）时需设置 `TRELLIA_ASSETS=<仓库>/assets`。
-- workspace `members` 在 M0 暂为 `["crates/*"]`（cargo 将无匹配的 glob 视为字面路径并报错），M1 加入首个示例后已恢复为 `["crates/*", "examples/*"]`。
-- 示例均为 `examples/<name>/` 下的独立包：`src/lib.rs`（可测试逻辑）+ `[[example]] path = "src/main.rs"`（`autobins = false`），因此根目录 `cargo run --example <name>` 可用。
-- workspace 依赖 `trellia` 设置 `default-features = false`，示例按需开启 `egui` / `devtools`。
-- 原始图标位于 `asserts/icon/`（目录名疑似笔误），已复制到 SPEC.md 3.3 规定的 `assets/icon/`；`asserts/` 未纳入版本控制，待负责人确认后删除。
+3. ~~golden 文件~~ —— **已确认（2026-10-13）**：负责人认可 `tests/golden/lane_demo_seed42.snap` 为基准；之后任何导致其变化的改动必须先提问。
+4. ~~`asserts/` 目录~~ —— **已删除（2026-10-13）**：经负责人同意；图标与 `assets/icon/trellia-icon.png` 逐字节相同。
 
 ## Windows 实机验证（2026-10-13）
 
