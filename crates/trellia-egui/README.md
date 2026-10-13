@@ -25,3 +25,4 @@ fn main() -> anyhow::Result<()> {
 - 资源 `WindowStatus { title, cpu_frame_ms }`：改 `title` 即改窗口标题；`cpu_frame_ms` 为近 60 帧整帧 CPU 耗时均值。
 - 日志：`run` 初始化 `env_logger`（默认 `info`，`RUST_LOG` 覆盖）。
 - Linux 构建需要 ALSA 开发包（`libasound2-dev` / `alsa-lib-devel`）。
+- `RunConfig.font_path`：追加一个 TTF / OTF 作为回退字体（如 CJK 子集），DrawList 文字与 egui 控件共用（ADR-010）。

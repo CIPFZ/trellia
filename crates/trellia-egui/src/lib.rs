@@ -11,10 +11,12 @@
 #![forbid(unsafe_code)]
 
 mod audio;
+mod fonts;
 mod input_map;
 mod paint;
 
 pub use audio::RodioBackend;
+pub use fonts::{CJK_FONT_NAME, font_definitions};
 
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
@@ -39,6 +41,8 @@ pub struct RunConfig {
     pub vsync: bool,
     /// 资产根目录；组装 App 时传给 `AssetsPlugin`，后端不读取。
     pub asset_root: Option<PathBuf>,
+    /// 追加的字体文件（如 CJK 子集，TTF / OTF），作为 egui 默认字体之后的回退字体（ADR-010）。
+    pub font_path: Option<PathBuf>,
 }
 
 impl Default for RunConfig {
@@ -49,6 +53,7 @@ impl Default for RunConfig {
             initial_window_px: (1280, 720),
             vsync: true,
             asset_root: None,
+            font_path: None,
         }
     }
 }
@@ -102,11 +107,22 @@ pub fn run(mut app: App, cfg: RunConfig) -> anyhow::Result<()> {
         ..eframe::NativeOptions::default()
     };
     options.glow_options.vsync = cfg.vsync;
+    let font = match &cfg.font_path {
+        Some(path) => {
+            Some(std::fs::read(path).map_err(|e| anyhow!("读取字体失败 {}: {e}", path.display()))?)
+        }
+        None => None,
+    };
     let title = cfg.title.clone();
     eframe::run_native(
         &cfg.title,
         options,
-        Box::new(move |_cc| Ok(Box::new(EguiApp::new(app, title)))),
+        Box::new(move |cc| {
+            if let Some(bytes) = font {
+                fonts::setup_fonts(&cc.egui_ctx, bytes);
+            }
+            Ok(Box::new(EguiApp::new(app, title)))
+        }),
     )
     .map_err(|e| anyhow!("eframe 运行失败: {e}"))
 }

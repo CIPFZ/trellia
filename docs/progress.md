@@ -2,6 +2,7 @@
 
 ## 会话记录（新会话追加在最上方）
 
+- 2026-10-13 游戏补充 E-1（Rootguard SPEC 15）：`RunConfig.font_path` + `setup_fonts`（ADR-010）。
 - 2026-10-13 游戏补充 E-3（Rootguard SPEC 15）：`DrawList::rect_sorted / rect_stroke_sorted / circle_sorted / text_sorted`（ADR-009）。
 - 2026-10-13 游戏补充 E-2（Rootguard SPEC 15）：新增 `load_atlas_into` / `load_clip_into` / `load_audio_into`（ADR-008），`lane_demo` 改用之，golden 不变。
 - 2026-10-13（续）：推送至 github.com/CIPFZ/trellia；首次 CI（run 38376052953）三平台全绿。
