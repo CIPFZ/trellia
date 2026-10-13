@@ -1183,7 +1183,7 @@ pub trait Snapshot { fn write(&self, out: &mut Vec<u8>); }
 
 ### M3 egui 后端
 
-交付：`trellia-egui`（渲染 + 输入，不含音频）；`run_egui`；`examples/hello_window`（显示 "Trellia" 文字与一个矩形）；`examples/sprites`（10 个 walker 占位精灵以不同速度播放走路动画，窗口可任意缩放并保持 letterbox，F 键翻转，鼠标点击处画一个圆持续 1 秒）。
+交付：`trellia-egui`（渲染 + 输入，不含音频）；`run_egui`；`examples/hello_window`（显示 "Trellia" 文字与一个矩形）；`examples/sprites`（10 个 walker 占位精灵以不同速度播放走路动画，窗口可任意缩放并保持 letterbox，F2 键翻转，鼠标点击处画一个圆持续 1 秒）。
 
 验收：三平台（至少 Linux + 另一平台）运行 `sprites` 示例，手动核对：缩放正确、动画流畅、点击位置准确（letterbox 偏移下仍准确）、`cargo run --release` 下 1000 个精灵帧耗时 < 4 ms（示例提供 `--count 1000` 参数并在标题栏显示帧耗时）。
 
