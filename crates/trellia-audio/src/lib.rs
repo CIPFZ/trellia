@@ -41,6 +41,15 @@ pub enum AudioRequest {
         /// 是否循环。
         looped: bool,
     },
+    /// 在 `ticks` 个 tick 内把当前背景音乐交叉淡化到 `clip`（新音乐循环播放）：旧音乐线性淡出后停止，
+    /// 新音乐同时线性淡入。没有正在播放的音乐时只淡入；`ticks == 0` 等价于循环的 `PlayMusic`。
+    /// 时长按固定步长 `Time::FIXED_DT` 换算为秒（UC-51，游戏 spec E-5，ADR-011）。
+    CrossfadeMusic {
+        /// 新音乐。
+        clip: Handle<AudioClip>,
+        /// 淡化时长（tick）。
+        ticks: u32,
+    },
     /// 停止背景音乐。
     StopMusic,
     /// 设置总线音量（UC-52）。
@@ -75,6 +84,12 @@ impl AudioQueue {
     /// 播放（替换）背景音乐。
     pub fn play_music(&mut self, clip: Handle<AudioClip>, looped: bool) {
         self.requests.push(AudioRequest::PlayMusic { clip, looped });
+    }
+
+    /// 在 `ticks` 个 tick 内交叉淡化到新的背景音乐（循环播放，ADR-011）。对应 UC-51。
+    pub fn crossfade_music(&mut self, clip: Handle<AudioClip>, ticks: u32) {
+        self.requests
+            .push(AudioRequest::CrossfadeMusic { clip, ticks });
     }
 
     /// 停止背景音乐。
@@ -202,12 +217,17 @@ mod tests {
         q.play_music(h, true);
         q.set_bus_volume(AudioBus::Music, 0.3);
         q.stop_music();
-        assert_eq!(q.peek().len(), 5);
+        q.crossfade_music(h, 90);
+        assert_eq!(q.peek().len(), 6);
         assert!(
             matches!(q.peek()[0], AudioRequest::PlaySfx { volume, .. } if (volume - 1.0).abs() < 1e-6)
         );
         let drained: Vec<_> = q.drain().collect();
         assert!(matches!(drained[4], AudioRequest::StopMusic));
+        assert!(matches!(
+            drained[5],
+            AudioRequest::CrossfadeMusic { clip, ticks: 90 } if clip == h
+        ));
         assert!(q.peek().is_empty());
     }
 

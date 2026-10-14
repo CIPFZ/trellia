@@ -23,4 +23,5 @@ assert!(matches!(queue.peek()[0], AudioRequest::PlaySfx { .. }));
 - `AudioPlugin` 插入 `AudioQueue`；`Assets<AudioClip>` 已存在（`AssetsPlugin`）时不覆盖。
 - 后端每帧 `drain`；未被取走的请求在下一帧 `Stage::First` 丢弃（首次 `warn`）。
 - egui 后端用 `RodioBackend` 播放（同一 clip 最多 8 路）；无设备时降级为静默。
+- `crossfade_music(clip, ticks)`：`ticks` 内旧音乐淡出、新音乐（循环）淡入（ADR-011）。
 - `load_audio_into(world, rel)`：读取 OGG / WAV 到 World 中的 `Assets<AudioClip>`，按路径去重（ADR-008）。
